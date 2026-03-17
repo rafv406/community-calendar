@@ -1,0 +1,11 @@
+﻿src/parsers/ical.ts(32,18): error TS2339: Property 'attach' does not exist on type 'VEvent'.
+src/parsers/ical.ts(33,35): error TS2339: Property 'attach' does not exist on type 'VEvent'.
+src/parsers/ical.ts(34,32): error TS2339: Property 'attach' does not exist on type 'VEvent'.
+src/parsers/ical.ts(36,29): error TS2339: Property 'attach' does not exist on type 'VEvent'.
+src/parsers/ical.ts(36,58): error TS2339: Property 'attach' does not exist on type 'VEvent'.
+src/parsers/ical.ts(36,95): error TS2339: Property 'attach' does not exist on type 'VEvent'.
+src/parsers/ical.ts(37,32): error TS2339: Property 'attach' does not exist on type 'VEvent'.
+src/parsers/ical.ts(38,35): error TS2339: Property 'attach' does not exist on type 'VEvent'.
+src/parsers/ical.ts(39,31): error TS2339: Property 'attach' does not exist on type 'VEvent'.
+src/parsers/ical.ts(69,11): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.

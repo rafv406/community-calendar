@@ -1,0 +1,12 @@
+name = "community-calendar-worker"
+main = "src/index.ts"
+compatibility_date = "2024-04-05"
+
+[triggers]
+crons = ["*/30 * * * *"]
+
+[vars]
+SYNC_INTERVAL_MINUTES = "30"
+MAX_EVENTS_LOOKAHEAD_DAYS = "365"
+DEDUP_EXPIRY_DAYS = "7"
+ALERT_EMAIL_TO = "coordinator@rafv.org"
