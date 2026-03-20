@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Calendar, MapPin, ExternalLink } from 'lucide-react';
+import { X, Calendar, MapPin, ExternalLink, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { EventRecord } from '../hooks/useSupabaseEvents';
 
@@ -18,48 +18,57 @@ export const EventModal = ({ event, sourceColor, sourceName, onClose }: {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>
-          <X size={24} />
+        <button className="modal-close" onClick={onClose} aria-label="Close modal">
+          <X size={20} />
         </button>
         
         {event.image_url && (
-          <div style={{ marginBottom: '24px', borderRadius: '8px', overflow: 'hidden' }}>
-            <img src={event.image_url} alt={event.title} style={{ width: '100%', height: '240px', objectFit: 'cover' }} />
+          <div className="modal-image-wrap">
+            <img src={event.image_url} alt={event.title} className="modal-image" />
           </div>
         )}
         
-        <div className="modal-org" style={{ color: sourceColor, fontSize: '12px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '16px' }}>
+        <div className="modal-org" style={{ color: sourceColor }}>
           {sourceName}
         </div>
         
-        <h2 className="modal-title" style={{ fontFamily: 'var(--font-serif)', fontSize: '32px', color: 'var(--color-navy)', marginBottom: '16px', lineHeight: 1.2 }}>
+        <h2 className="modal-title">
           {event.title}
         </h2>
         
-        <div className="modal-meta" style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '24px', borderBottom: '1px solid #e2e8f0', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-gray)' }}>
-            <Calendar size={16} />
-            <span>{dateStr} · {timeStr}</span>
+        <div className="modal-meta">
+          <div className="modal-meta-row">
+            <Calendar className="modal-meta-icon" />
+            <span>{dateStr}</span>
+          </div>
+          <div className="modal-meta-row">
+            <Clock className="modal-meta-icon" />
+            <span>{timeStr}</span>
           </div>
           {event.location && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-gray)' }}>
-              <MapPin size={16} />
+            <div className="modal-meta-row">
+              <MapPin className="modal-meta-icon" />
               <span>{event.location}</span>
             </div>
           )}
         </div>
         
         {event.description && (
-          <div className="modal-desc" style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--color-navy)', marginBottom: '32px', whiteSpace: 'pre-wrap' }}>
+          <div className="modal-desc">
             {event.description}
           </div>
         )}
         
-        {event.url && (
-          <a href={event.url} target="_blank" rel="noopener noreferrer" className="modal-action" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--color-navy)', color: 'white', padding: '12px 24px', fontSize: '12px', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none' }}>
-            See Event <ExternalLink size={16} />
-          </a>
-        )}
+        <div className="modal-footer">
+          {event.url && (
+            <a href={event.url} target="_blank" rel="noopener noreferrer" className="modal-action">
+              See Event <ExternalLink size={14} className="ml-1.5" />
+            </a>
+          )}
+          <button className="modal-secondary-btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );

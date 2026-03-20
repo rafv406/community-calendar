@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSupabaseEvents, SourceRecord } from './hooks/useSupabaseEvents';
 import { format } from 'date-fns';
 import { EventModal } from './components/EventModal';
+import { Logo } from './components/Logo';
 
 type Organization = 'RAFV' | 'Fox Valley Arts' | 'Community Builders';
 type Category = 'Community' | 'Arts' | 'Sports' | 'Family' | 'Fundraiser';
@@ -43,10 +44,10 @@ const EventCarousel = ({ events, onEventClick }: { events: any[], onEventClick: 
 
   const getPos = (i: number) => {
     const diff = (i - current + total) % total;
-    if (diff === 0)          return 'pos-center';
-    if (diff === 1)          return 'pos-right';
-    if (diff === total - 1)  return 'pos-left';
-    if (diff === 2)          return 'pos-hidden-right';
+    if (diff === 0) return 'pos-center';
+    if (diff === 1) return 'pos-right';
+    if (diff === total - 1) return 'pos-left';
+    if (diff === 2) return 'pos-hidden-right';
     return 'pos-hidden-left';
   };
 
@@ -64,8 +65,8 @@ const EventCarousel = ({ events, onEventClick }: { events: any[], onEventClick: 
         {events.length === 0 ? (
           <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--color-muted)' }}>No upcoming events</div>
         ) : events.map((ev, i) => (
-          <div 
-            key={i} 
+          <div
+            key={i}
             className={`event-card ${getPos(i)}`}
             onClick={() => {
               const diff = (i - current + total) % total;
@@ -74,23 +75,12 @@ const EventCarousel = ({ events, onEventClick }: { events: any[], onEventClick: 
               else if (diff === 0) onEventClick(ev.id);
             }}
           >
-            <div className="card-image">
-              {ev.image_url ? (
-                <div className="card-image-bg" style={{ backgroundImage: `url(${ev.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
-              ) : (
-                <div className="card-image-bg" style={{ background: `linear-gradient(135deg, ${ev.gFrom}, ${ev.gTo})` }}></div>
-              )}
-              <div className="card-org-bar" style={{ background: ev.orgColor }}></div>
-              <div className="card-date-badge">{ev.date} · {ev.time}</div>
-            </div>
+            <div className="card-simple-top" style={{ background: ev.orgColor }}></div>
             <div className="card-body">
+              <div className="card-date-compact">{ev.date} · {ev.time}</div>
               <div className="card-org-label" style={{ color: ev.orgColor }}>{ev.org}</div>
               <div className="card-title">{ev.title}</div>
               <div className="card-meta">
-                <div className="card-meta-row">
-                  <Calendar className="card-meta-icon" />
-                  {ev.date}
-                </div>
                 <div className="card-meta-row">
                   <MapPin className="card-meta-icon" />
                   {ev.loc}
@@ -135,10 +125,10 @@ const SearchBar = ({ query, onQueryChange }: { query: string; onQueryChange: (q:
           {/* Search */}
           <div className="bar-field search-field">
             <Search className="field-icon" />
-            <input 
-              className="field-label" 
-              type="text" 
-              placeholder="Search events..." 
+            <input
+              className="field-label"
+              type="text"
+              placeholder="Search events..."
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
             />
@@ -189,7 +179,7 @@ const BrowseEvents = ({ events, onEventClick }: { events: any[], onEventClick: (
   }, [events]);
 
   const [activeOrgs, setActiveOrgs] = useState<Set<string>>(new Set());
-  
+
   // Auto-select all when orgs load
   useEffect(() => {
     if (orgs.length > 0 && activeOrgs.size === 0) {
@@ -215,120 +205,182 @@ const BrowseEvents = ({ events, onEventClick }: { events: any[], onEventClick: (
   return (
     <div className="browse-section">
       {/* Header */}
-      <div className="browse-header">
-        <div className="browse-header-left">
-          <div className="browse-title">All Events</div>
+      <div className="section-header-wrap">
+        <div className="section-eyebrow">Discover</div>
+        <div className="section-title-centered">All Events</div>
+      </div>
+
+      {/* Controls & Filters */}
+      <div className="browse-controls">
+        <div className="browse-filters">
+          <span className="filter-label">Filter</span>
+          {orgs.map(({ org, orgColor }) => (
+            <div
+              key={org}
+              className={`filter-pill ${activeOrgs.has(org) ? 'active' : ''}`}
+              onClick={() => toggleOrg(org)}
+            >
+              <span
+                className="pill-dot"
+                style={{ background: activeOrgs.has(org) ? 'rgba(255,255,255,0.7)' : orgColor }}
+              ></span>
+              {org}
+            </div>
+          ))}
+        </div>
+
+        <div className="browse-actions">
           <div className="browse-count">{filteredEvents.length} result{filteredEvents.length !== 1 ? 's' : ''}</div>
-        </div>
-        <div className="view-toggles">
-          <button 
-            className={`view-btn ${view === 'list' ? 'active' : ''}`} 
-            title="List view"
-            onClick={() => setView('list')}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-              <line x1="4" y1="6" x2="20" y2="6"/>
-              <line x1="4" y1="12" x2="20" y2="12"/>
-              <line x1="4" y1="18" x2="20" y2="18"/>
-            </svg>
-          </button>
-          <button 
-            className={`view-btn ${view === 'grid' ? 'active' : ''}`} 
-            title="Grid view"
-            onClick={() => setView('grid')}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-              <rect x="3" y="3" width="7" height="7" rx="1"/>
-              <rect x="14" y="3" width="7" height="7" rx="1"/>
-              <rect x="3" y="14" width="7" height="7" rx="1"/>
-              <rect x="14" y="14" width="7" height="7" rx="1"/>
-            </svg>
-          </button>
-          <button 
-            className={`view-btn ${view === 'calendar' ? 'active' : ''}`} 
-            title="Calendar view"
-            onClick={() => setView('calendar')}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="browse-filters">
-        <span className="filter-label">Filter</span>
-        {orgs.map(({ org, orgColor }) => (
-          <div 
-            key={org}
-            className={`filter-pill ${activeOrgs.has(org) ? 'active' : ''}`}
-            onClick={() => toggleOrg(org)}
-          >
-            <span 
-              className="pill-dot" 
-              style={{ background: activeOrgs.has(org) ? 'rgba(255,255,255,0.7)' : orgColor }}
-            ></span>
-            {org}
+          <div className="view-toggles">
+            <button
+              className={`view-btn ${view === 'list' ? 'active' : ''}`}
+              title="List view"
+              onClick={() => setView('list')}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="18" x2="20" y2="18" />
+              </svg>
+            </button>
+            <button
+              className={`view-btn ${view === 'grid' ? 'active' : ''}`}
+              title="Grid view"
+              onClick={() => setView('grid')}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+            </button>
+            <button
+              className={`view-btn ${view === 'calendar' ? 'active' : ''}`}
+              title="Calendar view"
+              onClick={() => setView('calendar')}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            </button>
           </div>
-        ))}
+        </div>
       </div>
 
-      {/* List */}
-      <div className="events-list">
-        {filteredEvents.map((ev, idx) => {
-          const showDivider = ev.month !== lastMonth;
-          if (showDivider) lastMonth = ev.month;
+      {/* Events View */}
+      {view === 'list' && (
+        <div className="events-list">
+          {filteredEvents.map((ev, idx) => {
+            const showDivider = ev.month !== lastMonth;
+            if (showDivider) lastMonth = ev.month;
 
-          return (
-            <React.Fragment key={idx}>
-              {showDivider && (
-                <div className="month-divider">
-                  {ev.month} 2026
-                </div>
-              )}
-              <div 
-                className="event-row"
-                style={{
-                  '--glow-color': hexToRgba(ev.orgColor, 0.14),
-                  '--wash-color': hexToRgba(ev.orgColor, 0.035),
-                  cursor: 'pointer'
-                } as React.CSSProperties}
-                onClick={() => onEventClick(ev.id)}
-              >
-                <div className="row-date">
-                  <div className="date-day">{ev.day}</div>
-                  <div className="date-month">{ev.month.slice(0, 3)}</div>
-                </div>
-                <div className="row-main">
-                  <div className="row-org">
-                    <div className="row-org-dot" style={{ background: ev.orgColor }}></div>
-                    <span className="row-org-name">{ev.org}</span>
+            return (
+              <React.Fragment key={idx}>
+                {showDivider && (
+                  <div className="month-divider">
+                    {ev.month} 2026
                   </div>
-                  <div className="row-title">{ev.title}</div>
-                  <div className="row-meta">
-                    <div className="row-meta-item">
-                      <Clock className="row-meta-icon" />
-                      {ev.time}
+                )}
+                <div
+                  className="event-row"
+                  style={{
+                    '--glow-color': hexToRgba(ev.orgColor, 0.14),
+                    '--wash-color': hexToRgba(ev.orgColor, 0.035),
+                    cursor: 'pointer'
+                  } as React.CSSProperties}
+                  onClick={() => onEventClick(ev.id)}
+                >
+                  <div className="row-date">
+                    <div className="date-day">{ev.day}</div>
+                    <div className="date-month">{ev.month.slice(0, 3)}</div>
+                  </div>
+                  <div className="row-main">
+                    <div className="row-org">
+                      <div className="row-org-dot" style={{ background: ev.orgColor }}></div>
+                      <span className="row-org-name">{ev.org}</span>
                     </div>
-                    <div className="row-meta-item">
-                      <MapPin className="row-meta-icon" />
-                      {ev.loc}
+                    <div className="row-title">{ev.title}</div>
+                    <div className="row-meta">
+                      <div className="row-meta-item">
+                        <Clock className="row-meta-icon" />
+                        {ev.time}
+                      </div>
+                      <div className="row-meta-item">
+                        <MapPin className="row-meta-icon" />
+                        {ev.loc}
+                      </div>
                     </div>
                   </div>
+                  <div className="row-right">
+                    <span
+                      className="row-brand"
+                      style={{
+                        color: ev.orgColor,
+                        background: hexToRgba(ev.orgColor, 0.08),
+                      }}
+                    >{ev.org}</span>
+                    <a href="#" className="row-link" onClick={(e) => e.preventDefault()}>See event →</a>
+                  </div>
                 </div>
-                <div className="row-right">
-                  <span className="row-category">{ev.cat}</span>
-                  <a href="#" className="row-link" onClick={(e) => e.preventDefault()}>See event →</a>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      )}
+
+      {view === 'grid' && (
+        <div className="events-grid">
+          {filteredEvents.map((ev) => (
+            <div
+              key={ev.id}
+              className="event-grid-card"
+              onClick={() => onEventClick(ev.id)}
+              style={{
+                '--glow-color': hexToRgba(ev.orgColor, 0.14),
+                '--wash-color': hexToRgba(ev.orgColor, 0.035),
+              } as React.CSSProperties}
+            >
+              <div className="grid-card-top" style={{ background: ev.orgColor }}></div>
+              <div className="grid-card-body">
+                <div className="grid-card-date">
+                  <span className="grid-day">{ev.day}</span>
+                  <span className="grid-month">{ev.month.slice(0, 3)}</span>
+                </div>
+                <div className="grid-card-content">
+                  <div className="grid-org-label" style={{ color: ev.orgColor }}>{ev.org}</div>
+                  <div className="grid-title">{ev.title}</div>
+                  <div className="grid-meta">
+                    <div className="grid-meta-row">
+                      <Clock className="grid-meta-icon" />
+                      <span>{ev.time}</span>
+                    </div>
+                    <div className="grid-meta-row">
+                      <MapPin className="grid-meta-icon" />
+                      <span>{ev.loc}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </React.Fragment>
-          );
-        })}
-      </div>
+              <div className="grid-card-footer">
+                <span
+                  className="grid-brand"
+                  style={{
+                    color: ev.orgColor,
+                    background: hexToRgba(ev.orgColor, 0.08),
+                  }}
+                >
+                  {ev.org}
+                </span>
+                <a href="#" className="grid-link" onClick={(e) => e.preventDefault()}>See event →</a>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Load more */}
       <div className="load-more-wrap">
@@ -357,7 +409,7 @@ export default function App() {
       const source = sourcesMap.get(ev.source_id);
       const orgColor = source?.color || '#003399';
       const dateObj = new Date(ev.start_datetime);
-      
+
       return {
         id: ev.id,
         title: ev.title,
@@ -377,17 +429,17 @@ export default function App() {
     let filtered = events;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(ev => 
-        ev.title.toLowerCase().includes(q) || 
+      filtered = filtered.filter(ev =>
+        ev.title.toLowerCase().includes(q) ||
         (ev.location && ev.location.toLowerCase().includes(q)) ||
         ev.source_name.toLowerCase().includes(q)
       );
     }
-    
+
     return filtered.map(ev => {
       const source = sourcesMap.get(ev.source_id);
       const dateObj = new Date(ev.start_datetime);
-      
+
       // Capitalize first letter of category if present
       const cat = ev.categories?.[0] ? ev.categories[0].charAt(0).toUpperCase() + ev.categories[0].slice(1) : 'Community';
 
@@ -420,10 +472,10 @@ export default function App() {
         setSelectedEventId(null);
       }
     };
-    
+
     // Check initial
     handlePopState();
-    
+
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
@@ -459,7 +511,7 @@ export default function App() {
     const grid = gridRef.current;
     const { cols: COLS, rows: ROWS } = dimensions;
     const TOTAL = COLS * ROWS;
-    
+
     grid.innerHTML = '';
     const dots: HTMLDivElement[] = [];
 
@@ -507,7 +559,7 @@ export default function App() {
     <>
       <nav>
         <div className="nav-logo">
-          <div className="font-serif text-2xl tracking-widest text-[#1a2a4a] font-light">RAFV</div>
+          <Logo />
         </div>
         <div className="nav-links">
           <a href="#">Events</a>
@@ -548,16 +600,17 @@ export default function App() {
 
       <EventCarousel events={carouselEvents} onEventClick={openEvent} />
 
-      <SearchBar query={searchQuery} onQueryChange={setSearchQuery} />
-
-      <BrowseEvents events={browseEvents} onEventClick={openEvent} />
+      <div className="events-container">
+        <SearchBar query={searchQuery} onQueryChange={setSearchQuery} />
+        <BrowseEvents events={browseEvents} onEventClick={openEvent} />
+      </div>
 
       {selectedEventRecord && (
-        <EventModal 
-          event={selectedEventRecord} 
+        <EventModal
+          event={selectedEventRecord}
           sourceName={selectedEventRecord.source_name}
           sourceColor={sourcesMap.get(selectedEventRecord.source_id)?.color || '#003399'}
-          onClose={closeEvent} 
+          onClose={closeEvent}
         />
       )}
     </>
