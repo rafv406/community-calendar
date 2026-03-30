@@ -41,7 +41,7 @@ body {
 /* ── NAV ── */
 nav {
   width: 100%;
-  padding: 32px 48px;
+  padding: 40px 64px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -51,18 +51,18 @@ nav {
 
 .nav-logo img,
 .nav-logo svg {
-  height: 36px;
+  height: 54px;
   width: auto;
   object-fit: contain;
 }
 
 .nav-links {
   display: flex;
-  gap: 36px;
+  gap: 48px;
 }
 
 .nav-links a {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-gray);
   letter-spacing: 0.5px;
   text-decoration: none;
@@ -80,20 +80,20 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0 24px 64px;
+  padding: 40px 24px 80px;
   gap: 0;
 }
 
 /* ── HEADLINE ── */
 .headline-wrap {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 60px;
 }
 
 .headline-1 {
   font-family: 'DM Sans', sans-serif;
   font-weight: 200;
-  font-size: clamp(28px, 5vw, 48px);
+  font-size: clamp(32px, 6vw, 56px);
   letter-spacing: 0.5em;
   color: var(--color-muted);
   line-height: 1;
@@ -106,7 +106,7 @@ main {
 .headline-2 {
   font-family: 'Cormorant Garamond', serif;
   font-weight: 300;
-  font-size: clamp(44px, 8vw, 80px);
+  font-size: clamp(52px, 10vw, 100px);
   letter-spacing: 0.18em;
   color: var(--color-navy);
   line-height: 1;
@@ -131,7 +131,7 @@ main {
 /* ── BAR WRAP + REFLECTION ── */
 .bar-scene {
   width: 100%;
-  max-width: 700px;
+  max-width: 900px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -151,8 +151,8 @@ main {
 .holographic-bar {
   position: relative;
   width: 100%;
-  height: 110px;
-  border-radius: 20px;
+  height: 140px;
+  border-radius: 24px;
   overflow: hidden;
   background: linear-gradient(90deg,
       #020c2e, #0d1b8a, #1a4fd6, #0a9ed1,
@@ -217,7 +217,7 @@ main {
 #dot-grid {
   display: grid;
   grid-template-columns: repeat(22, 1fr);
-  grid-template-rows: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
   position: absolute;
   inset: 0;
   padding: 16px 20px;
@@ -253,7 +253,7 @@ main {
 /* ── REFLECTION ── */
 .bar-reflection {
   width: 94%;
-  height: 60px;
+  height: 80px;
   border-radius: 20px;
   background: linear-gradient(90deg,
       #020c2e, #0d1b8a, #1a4fd6, #0a9ed1,
@@ -922,8 +922,9 @@ main {
   width: 320px;
   left: calc(50% - 160px);
   top: 0;
-  background: #fff;
+  background: #ffffff;
   border-radius: 12px;
+  border: 1px solid rgba(208, 218, 240, 0.55);
   overflow: hidden;
   cursor: pointer;
   will-change: transform, opacity, filter;
@@ -931,20 +932,37 @@ main {
     transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
     filter 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.5s ease;
+    box-shadow 0.5s ease,
+    border-color 0.5s ease;
+}
+
+.event-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: var(--wash-color, transparent);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
 }
 
 .event-card.pos-center {
   transform: translateX(0) scale(1);
   opacity: 1;
   filter: blur(0);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 16px 40px rgba(0, 51, 153, 0.08);
   z-index: 10;
 }
 
 .event-card.pos-center:hover {
   transform: translateX(0) scale(1.02) translateY(-4px);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 24px 60px var(--glow-color, rgba(0, 51, 153, 0.12));
+  border-color: rgba(208, 218, 240, 0.8);
+}
+
+.event-card.pos-center:hover::before {
+  opacity: 1;
 }
 
 .event-card.pos-left {
@@ -979,10 +997,7 @@ main {
   z-index: 1;
 }
 
-.card-simple-top {
-  width: 100%;
-  height: 6px;
-}
+/* .card-simple-top removed */
 
 .card-date-compact {
   font-family: var(--font-sans);
@@ -1711,10 +1726,7 @@ input.field-label::placeholder {
   opacity: 1;
 }
 
-.grid-card-top {
-  width: 100%;
-  height: 6px;
-}
+/* .grid-card-top removed */
 
 .grid-card-body {
   padding: 24px;

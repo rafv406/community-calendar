@@ -7,7 +7,7 @@ export const Logo = ({ className }: { className?: string }) => (
     xmlns="http://www.w3.org/2000/svg" 
     viewBox="0 0 934.45 437.98"
     className={className}
-    style={{ height: '36px', width: 'auto' }}
+    style={{ height: '54px', width: 'auto' }}
   >
     <defs>
       <style>

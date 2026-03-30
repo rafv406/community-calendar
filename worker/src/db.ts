@@ -8,7 +8,12 @@ export interface Env {
 export async function upsertEvents(events: NormalizedEvent[], env: Env) {
   if (events.length === 0) return 0;
   
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/events`, {
+  // Use 'on_conflict' parameter to specify which column to check for duplicates.
+  // This ensures that when a fingerprint exists, it updates the record instead of throwing a 23505 error.
+  const url = new URL(`${env.SUPABASE_URL}/rest/v1/events`);
+  url.searchParams.set('on_conflict', 'fingerprint');
+
+  const res = await fetch(url.toString(), {
     method: 'POST',
     headers: {
       'apikey': env.SUPABASE_SERVICE_KEY,
@@ -20,7 +25,9 @@ export async function upsertEvents(events: NormalizedEvent[], env: Env) {
   });
   
   if (!res.ok) {
-    throw new Error(`Supabase Upsert failed: ${await res.text()}`);
+    const errorText = await res.text();
+    console.error(`Supabase Upsert failed for ${events.length} events:`, errorText);
+    throw new Error(`Supabase Upsert failed: ${errorText}`);
   }
   return events.length;
 }

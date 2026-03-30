@@ -56,10 +56,16 @@ const EventCarousel = ({ events, onEventClick }: { events: any[], onEventClick: 
       <div className="dissolve dissolve-left"></div>
       <div className="dissolve dissolve-right"></div>
 
-      <div className="carousel-heading">
+      <motion.div 
+        className="carousel-heading"
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-30px" }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="carousel-eyebrow">March 2026</div>
         <div className="carousel-title">Upcoming Events</div>
-      </div>
+      </motion.div>
 
       <div className="carousel-stage">
         {events.length === 0 ? (
@@ -74,8 +80,11 @@ const EventCarousel = ({ events, onEventClick }: { events: any[], onEventClick: 
               else if (diff === total - 1) advance(-1);
               else if (diff === 0) onEventClick(ev.id);
             }}
+            style={{
+              '--glow-color': hexToRgba(ev.gFrom, 0.14),
+              '--wash-color': hexToRgba(ev.gFrom, 0.035),
+            } as React.CSSProperties}
           >
-            <div className="card-simple-top" style={{ background: ev.orgColor }}></div>
             <div className="card-body">
               <div className="card-date-compact">{ev.date} · {ev.time}</div>
               <div className="card-org-label" style={{ color: ev.orgColor }}>{ev.org}</div>
@@ -118,7 +127,13 @@ const EventCarousel = ({ events, onEventClick }: { events: any[], onEventClick: 
 
 const SearchBar = ({ query, onQueryChange }: { query: string; onQueryChange: (q: string) => void }) => {
   return (
-    <div className="search-bar-section">
+    <motion.div
+      className="search-bar-section"
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-30px" }}
+      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+    >
       <div className="bar-wrap">
         <div className="bar-glow"></div>
         <div className="search-bar">
@@ -158,7 +173,7 @@ const SearchBar = ({ query, onQueryChange }: { query: string; onQueryChange: (q:
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -205,10 +220,16 @@ const BrowseEvents = ({ events, onEventClick }: { events: any[], onEventClick: (
   return (
     <div className="browse-section">
       {/* Header */}
-      <div className="section-header-wrap">
+      <motion.div 
+        className="section-header-wrap"
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-30px" }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="section-eyebrow">Discover</div>
         <div className="section-title-centered">All Events</div>
-      </div>
+      </motion.div>
 
       {/* Controls & Filters */}
       <div className="browse-controls">
@@ -285,8 +306,12 @@ const BrowseEvents = ({ events, onEventClick }: { events: any[], onEventClick: (
                     {ev.month} 2026
                   </div>
                 )}
-                <div
+                <motion.div
                   className="event-row"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-20px" }}
+                  transition={{ duration: 0.6, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
                   style={{
                     '--glow-color': hexToRgba(ev.orgColor, 0.14),
                     '--wash-color': hexToRgba(ev.orgColor, 0.035),
@@ -325,7 +350,7 @@ const BrowseEvents = ({ events, onEventClick }: { events: any[], onEventClick: (
                     >{ev.org}</span>
                     <a href="#" className="row-link" onClick={(e) => e.preventDefault()}>See event →</a>
                   </div>
-                </div>
+                </motion.div>
               </React.Fragment>
             );
           })}
@@ -335,16 +360,19 @@ const BrowseEvents = ({ events, onEventClick }: { events: any[], onEventClick: (
       {view === 'grid' && (
         <div className="events-grid">
           {filteredEvents.map((ev) => (
-            <div
+            <motion.div
               key={ev.id}
               className="event-grid-card"
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-20px" }}
+              transition={{ duration: 0.6, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
               onClick={() => onEventClick(ev.id)}
               style={{
                 '--glow-color': hexToRgba(ev.orgColor, 0.14),
                 '--wash-color': hexToRgba(ev.orgColor, 0.035),
               } as React.CSSProperties}
             >
-              <div className="grid-card-top" style={{ background: ev.orgColor }}></div>
               <div className="grid-card-body">
                 <div className="grid-card-date">
                   <span className="grid-day">{ev.day}</span>
@@ -377,17 +405,23 @@ const BrowseEvents = ({ events, onEventClick }: { events: any[], onEventClick: (
                 </span>
                 <a href="#" className="grid-link" onClick={(e) => e.preventDefault()}>See event →</a>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}
 
       {/* Load more */}
-      <div className="load-more-wrap">
+      <motion.div 
+        className="load-more-wrap"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-20px" }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="load-more-line"></div>
         <button className="load-more-btn">Load more events →</button>
         <div className="load-more-line"></div>
-      </div>
+      </motion.div>
     </div>
   );
 };
@@ -458,7 +492,7 @@ export default function App() {
     });
   }, [events, sourcesMap, searchQuery]);
 
-  const [dimensions, setDimensions] = useState({ cols: 22, rows: 3 });
+  const [dimensions, setDimensions] = useState({ cols: 22, rows: 4 });
   const gridRef = useRef<HTMLDivElement>(null);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -498,7 +532,7 @@ export default function App() {
   useEffect(() => {
     const handleResize = () => {
       const isMobile = window.innerWidth <= 600;
-      setDimensions({ cols: isMobile ? 14 : 22, rows: 3 });
+      setDimensions({ cols: isMobile ? 14 : 22, rows: 4 });
     };
 
     handleResize();
@@ -590,11 +624,10 @@ export default function App() {
       <section className="partners-section">
         <div className="partners-title">Trusted Partners</div>
         <div className="partners-list">
-          <div className="partner-logo brand-1">Lumina</div>
-          <div className="partner-logo brand-2">Nexa</div>
-          <div className="partner-logo brand-3">Aura</div>
-          <div className="partner-logo brand-4">Oasis</div>
-          <div className="partner-logo brand-5">Vanguard</div>
+          <div className="partner-logo brand-1">RAFV</div>
+          <div className="partner-logo brand-2">NSBAR</div>
+          <div className="partner-logo brand-3">NAHREP</div>
+          <div className="partner-logo brand-4">Illinois REALTORS</div>
         </div>
       </section>
 
