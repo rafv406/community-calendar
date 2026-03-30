@@ -5,6 +5,9 @@ import { useSupabaseEvents, SourceRecord } from './hooks/useSupabaseEvents';
 import { format } from 'date-fns';
 import { EventModal } from './components/EventModal';
 import { Logo } from './components/Logo';
+import { Footer } from './components/Footer';
+import { HeaderHorizon } from './components/HeaderHorizon';
+import { CarouselVignette } from './components/CarouselVignette';
 
 type Organization = 'RAFV' | 'Fox Valley Arts' | 'Community Builders';
 type Category = 'Community' | 'Arts' | 'Sports' | 'Family' | 'Fundraiser';
@@ -53,8 +56,7 @@ const EventCarousel = ({ events, onEventClick }: { events: any[], onEventClick: 
 
   return (
     <section className="carousel-section">
-      <div className="dissolve dissolve-left"></div>
-      <div className="dissolve dissolve-right"></div>
+      <CarouselVignette />
 
       <motion.div 
         className="carousel-heading"
@@ -492,9 +494,6 @@ export default function App() {
     });
   }, [events, sourcesMap, searchQuery]);
 
-  const [dimensions, setDimensions] = useState({ cols: 22, rows: 4 });
-  const gridRef = useRef<HTMLDivElement>(null);
-
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -529,66 +528,6 @@ export default function App() {
     return events.find(ev => ev.id === selectedEventId) || null;
   }, [events, selectedEventId]);
 
-  useEffect(() => {
-    const handleResize = () => {
-      const isMobile = window.innerWidth <= 600;
-      setDimensions({ cols: isMobile ? 14 : 22, rows: 4 });
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (!gridRef.current) return;
-    const grid = gridRef.current;
-    const { cols: COLS, rows: ROWS } = dimensions;
-    const TOTAL = COLS * ROWS;
-
-    grid.innerHTML = '';
-    const dots: HTMLDivElement[] = [];
-
-    for (let i = 0; i < TOTAL; i++) {
-      const d = document.createElement('div');
-      d.className = 'dot';
-      grid.appendChild(d);
-      dots.push(d);
-    }
-
-    function entranceOrder(i: number) {
-      const col = i % COLS;
-      const row = Math.floor(i / COLS);
-      return col * ROWS + row;
-    }
-
-    const sortedByColumn = [...Array(TOTAL).keys()].sort((a, b) => entranceOrder(a) - entranceOrder(b));
-    const ENTRANCE_START = 900;
-    const timeouts: NodeJS.Timeout[] = [];
-
-    sortedByColumn.forEach((dotIdx, order) => {
-      const t1 = setTimeout(() => {
-        const dot = dots[dotIdx];
-        if (!dot) return;
-        dot.style.transition = 'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 300ms ease-out';
-        dot.style.opacity = '1';
-        dot.style.transform = 'scale(1)';
-
-        const t2 = setTimeout(() => {
-          if (!dot) return;
-          dot.style.transition = '';
-          const dur = (2.5 + Math.random() * 1.5).toFixed(2);
-          const delay = (Math.random() * 3).toFixed(2);
-          dot.style.animation = `dotPulse ${dur}s ease-in-out ${delay}s infinite`;
-        }, 500);
-        timeouts.push(t2);
-      }, ENTRANCE_START + order * 22);
-      timeouts.push(t1);
-    });
-
-    return () => timeouts.forEach(clearTimeout);
-  }, [dimensions]);
-
   return (
     <>
       <nav>
@@ -607,17 +546,24 @@ export default function App() {
         <div className="headline-wrap">
           <div className="headline-1">COMMUNITY</div>
           <div className="headline-2">CALENDAR</div>
+          
+          <div className="hero-actions">
+            <button 
+              className="hero-btn primary" 
+              onClick={() => document.querySelector('.carousel-section')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              UPCOMING EVENTS
+            </button>
+            <button 
+              className="hero-btn secondary" 
+              onClick={() => document.querySelector('.events-container')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              ALL EVENTS
+            </button>
+          </div>
         </div>
 
-        <div className="bar-scene">
-          <div className="holographic-bar">
-            <div className="bar-overlay scanlines"></div>
-            <div className="bar-overlay gloss"></div>
-            <div className="bar-overlay vignette"></div>
-            <div id="dot-grid" ref={gridRef}></div>
-          </div>
-          <div className="bar-reflection"></div>
-        </div>
+        <HeaderHorizon />
       </main>
 
       {/* Partners Section */}
@@ -646,6 +592,7 @@ export default function App() {
           onClose={closeEvent}
         />
       )}
+      <Footer />
     </>
   );
 }

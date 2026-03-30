@@ -1,0 +1,149 @@
+/* ── HEADER HORIZON ──
+   Full-width section sitting tight at the bottom of the hero.
+*/
+
+.header-horizon {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Removed overflow: hidden to allow soft blooms to naturally fade */
+}
+
+/* 
+  High-quality fade:
+  Pushes white entirely over the top rows so the structural grid
+  dissolves perfectly into nothingness as it ascends.
+*/
+.header-horizon-fade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80%;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 1)   0%,
+    rgba(255, 255, 255, 0.96) 25%,
+    rgba(255, 255, 255, 0.65) 65%,
+    rgba(255, 255, 255, 0)   100%
+  );
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* Beautiful razor-thin gradient line at the bottom horizon */
+.header-horizon-line {
+  position: absolute;
+  bottom: 0;
+  left: 5%;
+  right: 5%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(6, 182, 212, 0.5) 20%,
+    rgba(139, 92, 246, 0.6) 45%,
+    rgba(217, 70, 239, 0.5) 75%,
+    rgba(249, 115, 22, 0.5) 90%,
+    transparent 100%
+  );
+  z-index: 20;
+  opacity: 0;
+  box-shadow: 0 -2px 10px rgba(0, 51, 153, 0.1);
+  animation: glowLineIn 1.5s ease-out 1s forwards;
+}
+
+@keyframes glowLineIn {
+  from { opacity: 0; width: 0; left: 50%; }
+  to   { opacity: 1; width: 90%; left: 5%; }
+}
+
+/* Refined, softer blooms for light background */
+.header-horizon-blooms {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  /* Perfect horizontal fade to guarantee no hard edges cutoff */
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 10%,
+    black 90%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 10%,
+    black 90%,
+    transparent 100%
+  );
+}
+
+.header-bloom {
+  position: absolute;
+  bottom: -60%;
+  border-radius: 50%;
+  filter: blur(50px);
+  opacity: 0;
+  mix-blend-mode: normal;
+  animation: headerBloomRise 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.header-bloom-1 { width: 400px; height: 400px; left:  0%; background: rgba(6, 182, 212, 0.08);   animation-delay: 0.2s; }
+.header-bloom-2 { width: 500px; height: 500px; left: 25%; background: rgba(139, 92, 246, 0.06);  animation-delay: 0.3s; }
+.header-bloom-3 { width: 450px; height: 450px; left: 50%; background: rgba(217, 70, 239, 0.05);  animation-delay: 0.15s; }
+.header-bloom-4 { width: 350px; height: 350px; left: 75%; background: rgba(249, 115, 22, 0.07);  animation-delay: 0.4s; }
+
+@keyframes headerBloomRise {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Denser, smaller-gap dot grid */
+.header-horizon-dots {
+  display: grid;
+  gap: 12px;
+  position: relative;
+  z-index: 10;
+  width: 90%;
+  max-width: 1400px;
+  padding: 0 0 24px 0;   /* pushed firmly down to the line */
+  justify-items: center;
+  align-items: center;
+}
+
+.header-horizon-dot {
+  border-radius: 50%;
+  will-change: filter, box-shadow, opacity;
+}
+
+@keyframes headerDotPulse {
+  0%, 100% { opacity: var(--base-opacity); transform: scale(1); }
+  50%       { opacity: calc(var(--base-opacity) * 0.3); transform: scale(0.65); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .header-horizon {
+    height: 160px;
+  }
+  .header-horizon-dots {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-horizon {
+    height: 120px;
+  }
+  .header-horizon-dots {
+    gap: 8px;
+    padding-bottom: 20px;
+  }
+}

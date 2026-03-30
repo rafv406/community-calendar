@@ -1,0 +1,72 @@
+.carousel-vignette-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.carousel-vignette-blooms {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.carousel-bloom-side {
+  position: absolute;
+  top: 0; 
+  bottom: 0;
+  width: 450px;
+  mix-blend-mode: screen; /* High-end vibrant color blend */
+  opacity: 0;
+  pointer-events: none;
+  animation: bloomSideIn 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Linear gradients pouring perfectly inward from absolute edges */
+.bloom-side-left {
+  left: 0;
+  background: linear-gradient(to right, rgba(6, 182, 212, 0.4) 0%, rgba(139, 92, 246, 0.1) 40%, transparent 100%);
+}
+
+.bloom-side-right {
+  right: 0;
+  background: linear-gradient(to left, rgba(249, 115, 22, 0.4) 0%, rgba(217, 70, 239, 0.1) 40%, transparent 100%);
+  animation-delay: 0.2s;
+}
+
+@keyframes bloomSideIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.carousel-vignette-grid {
+  display: grid;
+  gap: 16px;
+  position: absolute;
+  inset: 0;
+  padding: 40px;
+  justify-items: center;
+  align-items: center;
+  z-index: 10;
+}
+
+.carousel-vignette-dot {
+  border-radius: 50%;
+  will-change: opacity, transform;
+}
+
+@keyframes carouselDotPulse {
+  0%, 100% { opacity: var(--base-opacity); transform: scale(1); }
+  50%       { opacity: calc(var(--base-opacity) * 0.25); transform: scale(0.6); }
+}
+
+.carousel-vignette-overlay {
+  position: absolute;
+  inset: 0;
+  /* Void strictly in the center so the cards are visible but the grid pops heavily around them */
+  background: radial-gradient(ellipse 50% 60% at 50% 50%, rgba(3, 3, 8, 0.95) 10%, rgba(3, 3, 8, 0.3) 70%, transparent 100%);
+  z-index: 15;
+}
