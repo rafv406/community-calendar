@@ -19,6 +19,7 @@ CREATE TABLE sources (
   active               BOOLEAN NOT NULL DEFAULT true,
   last_synced_at       TIMESTAMPTZ,
   consecutive_failures INTEGER NOT NULL DEFAULT 0,
+  last_error           TEXT,
   created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -72,6 +73,7 @@ CREATE POLICY "Public can read sources" ON sources FOR SELECT USING (true);
 | `active` | BOOLEAN DEFAULT true | Set `false` to instantly hide an org from the calendar without deleting data. |
 | `last_synced_at` | TIMESTAMPTZ (nullable) | Timestamp of last successful ingest. Used for monitoring. |
 | `consecutive_failures` | INTEGER DEFAULT 0 | Increments on each failed fetch. Triggers coordinator alert at 3+. |
+| `last_error` | TEXT (nullable) | The full error message from the last failed sync attempt. Cleared on success. |
 
 ### 3.3 Events Table — Column Reference
 

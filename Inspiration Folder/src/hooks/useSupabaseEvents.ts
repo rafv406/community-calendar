@@ -32,6 +32,7 @@ export interface SourceRecord {
   active: boolean;
   last_synced_at: string | null;
   consecutive_failures: number;
+  last_error: string | null;
 }
 
 export function useSupabaseEvents() {

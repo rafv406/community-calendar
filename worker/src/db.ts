@@ -31,3 +31,36 @@ export async function upsertEvents(events: NormalizedEvent[], env: Env) {
   }
   return events.length;
 }
+
+export async function updateSourceStatus(
+  sourceId: string, 
+  status: { last_synced_at?: string, consecutive_failures: number, last_error: string | null }, 
+  env: Env
+) {
+  const url = new URL(`${env.SUPABASE_URL}/rest/v1/sources`);
+  url.searchParams.set('id', `eq.${sourceId}`);
+
+  const updateBody: any = {
+    consecutive_failures: status.consecutive_failures,
+    last_error: status.last_error
+  };
+  
+  if (status.last_synced_at) {
+    updateBody.last_synced_at = status.last_synced_at;
+  }
+
+  const res = await fetch(url.toString(), {
+    method: 'PATCH',
+    headers: {
+      'apikey': env.SUPABASE_SERVICE_KEY,
+      'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify(updateBody)
+  });
+
+  if (!res.ok) {
+    console.error(`Failed to update source status for ${sourceId}:`, await res.text());
+  }
+}

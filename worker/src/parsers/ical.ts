@@ -6,9 +6,10 @@ import { extractHtmlImage, stripHtmlAndDecode, truncateDescription, extractCateg
 export async function parseICalFeed(source: Source): Promise<NormalizedEvent[]> {
   const events: NormalizedEvent[] = [];
   try {
+    const fetchUrl = source.feed_url.replace(/^webcal:\/\//i, 'https://');
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
-    const response = await fetch(source.feed_url, { signal: controller.signal });
+    const response = await fetch(fetchUrl, { signal: controller.signal });
     clearTimeout(timeout);
     
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -21,13 +22,13 @@ export async function parseICalFeed(source: Source): Promise<NormalizedEvent[]> 
         const eventAny = ev as any;
         if (ev.type === 'VEVENT') {
           let title = ev.summary ? ev.summary.slice() : '';
-          if (typeof title === 'object' && (title as any).val) title = (title as any).val;
+          if (title && typeof title === 'object' && (title as any).val) title = (title as any).val;
           title = stripHtmlAndDecode(title);
           
           if (!title) continue;
 
           let description = ev.description ? ev.description.slice() : '';
-          if (typeof description === 'object' && (description as any).val) description = (description as any).val;
+          if (description && typeof description === 'object' && (description as any).val) description = (description as any).val;
           
           let imageUrl = null;
           if (eventAny.attach) {
@@ -67,11 +68,11 @@ export async function parseICalFeed(source: Source): Promise<NormalizedEvent[]> 
           }
 
           let location: string | null = ev.location ? ev.location.slice() : '';
-          if (typeof location === 'object' && (location as any).val) location = (location as any).val;
+          if (location && typeof location === 'object' && (location as any).val) location = (location as any).val;
           location = location ? (location as string).trim() || null : null;
           
           let url = ev.url ? ev.url.slice() : null;
-          if (typeof url === 'object' && (url as any).val) url = (url as any).val;
+          if (url && typeof url === 'object' && (url as any).val) url = (url as any).val;
 
           const fingerprint = await generateFingerprint(title, start, source.id);
 

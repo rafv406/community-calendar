@@ -3,12 +3,13 @@ import { DateTime } from 'luxon';
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   fundraiser:  ['gala', 'auction', 'fundraiser', 'fundraising', 'charity', 'benefit'],
   meeting:     ['meeting', 'board', 'agenda', 'minutes', 'committee'],
-  workshop:    ['workshop', 'class', 'training', 'seminar', 'learn'],
+  workshop:    ['workshop', 'class', 'training', 'seminar', 'learn', 'education', 'webinar'],
   family:      ['family', 'kids', 'children', 'youth', 'all ages'],
-  arts:        ['concert', 'performance', 'exhibit', 'gallery', 'theatre', 'music'],
-  sports:      ['tournament', 'race', 'game', 'match', 'sport', 'run', 'walk'],
+  arts:        ['concert', 'exhibit', 'gallery', 'theatre', 'museum', 'symphony', 'orchestra'],
+  sports:      ['tournament', 'race', 'game', 'match', 'sport', 'athletics', 'competition', 'marathon'],
   community:   ['festival', 'fair', 'parade', 'celebration', 'community'],
   environment: ['garden', 'plant', 'nature', 'cleanup', 'environment', 'park'],
+  professional:['conference', 'networking', 'summit', 'convention', 'leadership', 'certification'],
 };
 
 export function extractHtmlImage(html: string | null): string | null {
@@ -37,9 +38,13 @@ export function truncateDescription(desc: string, maxChars: number = 1000): stri
 export function extractCategories(text: string): string[] {
   const lowerText = text.toLowerCase();
   const found = new Set<string>();
+  
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
     for (const kw of keywords) {
-      if (lowerText.includes(kw)) {
+      // Use regex with word boundaries to ensure we match whole words only.
+      // This prevents "run" from matching "running" or "run-through" incorrectly.
+      const regex = new RegExp(`\\b${kw}\\b`, 'i');
+      if (regex.test(lowerText)) {
         found.add(category);
         break;
       }

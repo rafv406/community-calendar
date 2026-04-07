@@ -11,6 +11,7 @@ export interface Source {
   active: boolean
   last_synced_at: string | null
   consecutive_failures: number
+  last_error: string | null
 }
 
 // The contract between parsers and the database.

@@ -6,7 +6,11 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
+    "@types/luxon": "^3.7.1",
     "dotenv": "^16.4.7",
+    "luxon": "^3.7.2",
+    "node-fetch": "^2.7.0",
+    "node-ical": "^0.25.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   }
