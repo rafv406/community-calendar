@@ -17,14 +17,14 @@ async function fetchSources(env: Env): Promise<Source[]> {
 async function syncSource(source: Source, env: Env): Promise<SyncResult> {
   let events: NormalizedEvent[] = [];
   let error: string | null = null;
-  
+
   try {
     if (source.source_type === 'ical') {
       events = await parseICalFeed(source);
     } else if (source.source_type === 'rss') {
       events = await parseRssFeed(source);
     }
-    
+
     if (events.length > 0) {
       // Deduplicate within the same batch by fingerprint
       const uniqueEvents = Array.from(
@@ -42,14 +42,14 @@ async function syncSource(source: Source, env: Env): Promise<SyncResult> {
     }, env);
   } catch (err: any) {
     error = err.message || 'Unknown error during sync';
-    
+
     // Failure: bump consecutive_failures and log error
     await updateSourceStatus(source.id, {
       consecutive_failures: (source.consecutive_failures || 0) + 1,
       last_error: error
     }, env);
   }
-  
+
   return {
     source_id: source.id,
     source_name: source.name,
@@ -70,22 +70,22 @@ export default {
     ctx.waitUntil((async () => {
       console.log('Starting scheduled cron run...');
       try {
-         const sources = await fetchSources(env);
-         const promises = sources.map(source => syncSource(source, env));
-         const results = await Promise.allSettled(promises);
-         
-         results.forEach(res => {
-           if (res.status === 'fulfilled') {
-             console.log(`Synced ${res.value.source_name}: ${res.value.events_upserted} events`);
-             if (res.value.error) {
-               console.error(`Error syncing ${res.value.source_name}: ${res.value.error}`);
-             }
-           } else {
-               console.error('Promise rejected during sync', res.reason);
-           }
-         });
+        const sources = await fetchSources(env);
+        const promises = sources.map(source => syncSource(source, env));
+        const results = await Promise.allSettled(promises);
+
+        results.forEach(res => {
+          if (res.status === 'fulfilled') {
+            console.log(`Synced ${res.value.source_name}: ${res.value.events_upserted} events`);
+            if (res.value.error) {
+              console.error(`Error syncing ${res.value.source_name}: ${res.value.error}`);
+            }
+          } else {
+            console.error('Promise rejected during sync', res.reason);
+          }
+        });
       } catch (err) {
-         console.error('Core sync failure', err);
+        console.error('Core sync failure', err);
       }
     })());
   },
@@ -103,9 +103,66 @@ export default {
     })());
 
     try {
+      if (url.pathname === '/events') {
+        const cache = caches.default;
+        const cacheKey = new Request(request.url, {
+          method: 'GET',
+          headers: {
+            'Origin': request.headers.get('Origin') || '*'
+          }
+        });
+        
+        let response = await cache.match(cacheKey);
+        if (response) {
+          const newHeaders = new Headers(response.headers);
+          Object.entries(corsHeaders).forEach(([k, v]) => newHeaders.set(k, v));
+          return new Response(response.body, {
+            status: 200,
+            headers: newHeaders
+          });
+        }
+
+        console.log('Cache miss: Fetching events and sources from Supabase...');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const [eventsRes, sourcesRes] = await Promise.all([
+          fetch(`${env.SUPABASE_URL}/rest/v1/events?expired=eq.false&start_datetime=gte.${today.toISOString()}&order=start_datetime.asc&limit=500`, {
+            headers: {
+              'apikey': env.SUPABASE_SERVICE_KEY,
+              'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`
+            }
+          }),
+          fetch(`${env.SUPABASE_URL}/rest/v1/sources?active=eq.true`, {
+            headers: {
+              'apikey': env.SUPABASE_SERVICE_KEY,
+              'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`
+            }
+          })
+        ]);
+
+        if (!eventsRes.ok) throw new Error(`Events fetch failed: ${eventsRes.status}`);
+        if (!sourcesRes.ok) throw new Error(`Sources fetch failed: ${sourcesRes.status}`);
+
+        const [events, sources] = await Promise.all([eventsRes.json(), sourcesRes.json()]);
+        
+        const payload = JSON.stringify({ events, sources });
+        response = new Response(payload, {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Cache-Control': 'public, max-age=600'
+          }
+        });
+
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        return response;
+      }
+
       if (sourceId) {
         console.log(`Starting targeted sync for source ${sourceId}...`);
-        
+
         let debugLogs: string[] = [];
         const originalLog = console.log;
         const originalError = console.error;
@@ -120,33 +177,33 @@ export default {
         });
         if (!res.ok) throw new Error(`Supabase source fetch failed: ${res.status}`);
         const sources: any[] = await res.json();
-        
+
         if (sources && sources.length > 0) {
-           const result = await syncSource(sources[0] as Source, env);
-           // Restore console
-           console.log = originalLog;
-           console.error = originalError;
-           
-           return new Response(JSON.stringify({ ...result, debug: debugLogs }), { 
-             status: 200, 
-             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-           });
+          const result = await syncSource(sources[0] as Source, env);
+          // Restore console
+          console.log = originalLog;
+          console.error = originalError;
+
+          return new Response(JSON.stringify({ ...result, debug: debugLogs }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         }
         return new Response('Source not found', { status: 404, headers: corsHeaders });
       } else {
         // Trigger global sync
         const sources = await fetchSources(env);
         const results = await Promise.all(sources.map(source => syncSource(source, env)));
-        return new Response(JSON.stringify(results), { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        return new Response(JSON.stringify(results), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
     } catch (err: any) {
       console.error('Manual fetch sync failed:', err);
-      return new Response(JSON.stringify({ error: err.message }), { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
   }
