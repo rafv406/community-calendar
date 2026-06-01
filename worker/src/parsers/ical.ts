@@ -1,7 +1,7 @@
 import * as ical from 'node-ical';
 import { Source, NormalizedEvent } from '../types';
 import { generateFingerprint } from '../dedupe';
-import { extractHtmlImage, stripHtmlAndDecode, truncateDescription, extractCategories, normalizeDate } from '../normalize';
+import { extractHtmlImage, stripHtmlAndDecode, cleanDescription, truncateDescription, extractCategories, normalizeDate } from '../normalize';
 
 export async function parseICalFeed(source: Source): Promise<NormalizedEvent[]> {
   const events: NormalizedEvent[] = [];
@@ -48,9 +48,14 @@ export async function parseICalFeed(source: Source): Promise<NormalizedEvent[]> 
              imageUrl = source.logo_url;
           }
 
-          const cleanDesc = truncateDescription(stripHtmlAndDecode(description));
+          const cleanDesc = truncateDescription(cleanDescription(description));
           const categories = extractCategories(title + ' ' + cleanDesc);
           
+          // Label Free events (training exercise)
+          if (cleanDesc.toLowerCase().includes('free')) {
+            title = "[FREE] " + title;
+          }
+
           const rawStart = normalizeDate(ev.start);
           if (!rawStart) continue;
           const start = rawStart as string;

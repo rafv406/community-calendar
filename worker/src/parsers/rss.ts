@@ -1,7 +1,7 @@
 import Parser from 'rss-parser';
 import { Source, NormalizedEvent } from '../types';
 import { generateFingerprint } from '../dedupe';
-import { extractHtmlImage, stripHtmlAndDecode, truncateDescription, extractCategories, normalizeDate } from '../normalize';
+import { extractHtmlImage, stripHtmlAndDecode, cleanDescription, truncateDescription, extractCategories, normalizeDate } from '../normalize';
 
 const parser = new Parser({
   customFields: {
@@ -36,7 +36,7 @@ export async function parseRssFeed(source: Source): Promise<NormalizedEvent[]> {
       if (!imageUrl) imageUrl = extractHtmlImage(descriptionRaw);
       if (!imageUrl && source.logo_url) imageUrl = source.logo_url;
 
-      const cleanDesc = truncateDescription(stripHtmlAndDecode(descriptionRaw));
+      const cleanDesc = truncateDescription(cleanDescription(descriptionRaw));
       const categories = extractCategories(title + ' ' + cleanDesc);
       
       const start = normalizeDate(item.pubDate || item.isoDate);

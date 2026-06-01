@@ -4,6 +4,7 @@ import { CalendarView } from './pages/CalendarView';
 import { Login } from './pages/Login';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { LearningLab } from './pages/LearningLab';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/community-calendar/event/:id" element={<CalendarView />} />
         
         <Route path="/login" element={<Login />} />
+        <Route path="/learninglab" element={<LearningLab />} />
         <Route 
           path="/admin" 
           element={
