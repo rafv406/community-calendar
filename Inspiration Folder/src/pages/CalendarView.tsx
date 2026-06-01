@@ -828,10 +828,9 @@ export const CalendarView = () => {
           <Logo />
         </div>
         <div className="nav-links">
-          <a href="#">Events</a>
-          <a href="#">Partners</a>
-          <a href="#">Trends</a>
-          <a href="#">Contact</a>
+          <a href="#browse-events">Events</a>
+          <a href="#partners">Partners</a>
+          <a href="mailto:hello@rafv.realtor">Contact</a>
         </div>
       </nav>
 
@@ -859,13 +858,12 @@ export const CalendarView = () => {
         <HeaderHorizon />
       </main>
 
-      <section className="partners-section">
+      <section className="partners-section" id="partners">
         <div className="partners-title">Trusted Partners</div>
         <div className="partners-list">
           <div className="partner-logo brand-1">RAFV</div>
           <div className="partner-logo brand-2">NSBAR</div>
-          <div className="partner-logo brand-3">NAHREP</div>
-          <div className="partner-logo brand-4">Illinois REALTORS</div>
+          <div className="partner-logo brand-3">Lazarus House</div>
         </div>
       </section>
 
