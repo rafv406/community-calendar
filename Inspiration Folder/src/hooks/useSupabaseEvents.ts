@@ -45,28 +45,65 @@ export function useSupabaseEvents() {
     async function fetchData() {
       try {
         setLoading(true);
-        // Start from beginning of today to catch all-day events
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        
+        // 1. Check SessionStorage Cache (10 minutes TTL)
+        const cacheKey = 'calendar_events_cache';
+        const cacheExpiryKey = 'calendar_events_cache_expiry';
+        const cachedData = sessionStorage.getItem(cacheKey);
+        const cachedExpiry = sessionStorage.getItem(cacheExpiryKey);
+        
+        if (cachedData && cachedExpiry && Date.now() < Number(cachedExpiry)) {
+          const parsed = JSON.parse(cachedData);
+          setEvents(parsed.events);
+          setSources(parsed.sources);
+          setLoading(false);
+          return;
+        }
 
-        const [eventsRes, sourcesRes] = await Promise.all([
-          supabase
-            .from('events')
-            .select('*')
-            .eq('expired', false)
-            .gte('start_datetime', today.toISOString())
-            .order('start_datetime', { ascending: true })
-            .limit(500),
-          supabase.from('sources').select('*').eq('active', true),
-        ]);
+        // 2. Fetch Data (either from Worker proxy or direct from Supabase client)
+        const workerApiUrl = import.meta.env.VITE_WORKER_API_URL;
+        let eventsData: EventRecord[] = [];
+        let sourcesData: SourceRecord[] = [];
 
-        if (eventsRes.error) throw eventsRes.error;
-        if (sourcesRes.error) throw sourcesRes.error;
+        if (workerApiUrl) {
+          console.log('Fetching events and sources from Cloudflare Edge Worker cache proxy...');
+          const res = await fetch(`${workerApiUrl}/events`);
+          if (!res.ok) throw new Error(`Worker API request failed: ${res.status}`);
+          const parsed = await res.json();
+          eventsData = parsed.events;
+          sourcesData = parsed.sources;
+        } else {
+          console.log('VITE_WORKER_API_URL not configured. Querying Supabase directly...');
+          // Direct Supabase Fallback
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
 
-        setEvents(eventsRes.data as EventRecord[]);
-        setSources(sourcesRes.data as SourceRecord[]);
+          const [eventsRes, sourcesRes] = await Promise.all([
+            supabase
+              .from('events')
+              .select('*')
+              .eq('expired', false)
+              .gte('start_datetime', today.toISOString())
+              .order('start_datetime', { ascending: true })
+              .limit(500),
+            supabase.from('sources').select('*').eq('active', true),
+          ]);
+
+          if (eventsRes.error) throw eventsRes.error;
+          if (sourcesRes.error) throw sourcesRes.error;
+          
+          eventsData = eventsRes.data as EventRecord[];
+          sourcesData = sourcesRes.data as SourceRecord[];
+        }
+
+        // 3. Update states and store to SessionStorage (10 minutes expiration)
+        setEvents(eventsData);
+        setSources(sourcesData);
+        
+        sessionStorage.setItem(cacheKey, JSON.stringify({ events: eventsData, sources: sourcesData }));
+        sessionStorage.setItem(cacheExpiryKey, String(Date.now() + 10 * 60 * 1000));
       } catch (err: any) {
-        console.error('Error fetching Supabase data:', err);
+        console.error('Error fetching data:', err);
         setError(err);
       } finally {
         setLoading(false);
