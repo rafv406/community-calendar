@@ -145,6 +145,7 @@ export default {
         if (!eventsRes.ok) throw new Error(`Events fetch failed for iCal: ${eventsRes.status}`);
 
         const events = (await eventsRes.json()) as any;
+        console.log(`Generating iCal feed with ${events.length} events.`);
         const icalContent = generateIcalFeed(events);
 
         response = new Response(icalContent, {
@@ -157,7 +158,10 @@ export default {
           }
         });
 
-        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        // Only cache if we actually have events, to avoid caching a broken/empty state
+        if (events.length > 0) {
+          ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        }
         return response;
       }
 

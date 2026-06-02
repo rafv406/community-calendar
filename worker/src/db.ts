@@ -8,6 +8,13 @@ export interface Env {
 export async function upsertEvents(events: NormalizedEvent[], env: Env) {
   if (events.length === 0) return 0;
   
+  const now = new Date().toISOString();
+  const eventsWithTimestamp = events.map(ev => ({
+    ...ev,
+    updated_at: now,
+    expired: false
+  }));
+
   // Use 'on_conflict' parameter to specify which column to check for duplicates.
   // This ensures that when a fingerprint exists, it updates the record instead of throwing a 23505 error.
   const url = new URL(`${env.SUPABASE_URL}/rest/v1/events`);
@@ -21,7 +28,7 @@ export async function upsertEvents(events: NormalizedEvent[], env: Env) {
       'Content-Type': 'application/json',
       'Prefer': 'resolution=merge-duplicates'
     },
-    body: JSON.stringify(events)
+    body: JSON.stringify(eventsWithTimestamp)
   });
   
   if (!res.ok) {
