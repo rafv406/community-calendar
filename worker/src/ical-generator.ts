@@ -6,6 +6,23 @@ export interface DbEventRecord extends NormalizedEvent {
   updated_at?: string;
 }
 
+// RFC 5545 Section 3.1: fold lines longer than 75 octets
+function foldLine(line: string): string {
+  const limit = 75;
+  if (line.length <= limit) return line;
+
+  let result = '';
+  result += line.substring(0, limit);
+  let remaining = line.substring(limit);
+
+  while (remaining.length > 0) {
+    result += '\r\n ' + remaining.substring(0, limit - 1);
+    remaining = remaining.substring(limit - 1);
+  }
+
+  return result;
+}
+
 export function generateIcalFeed(events: DbEventRecord[]): string {
   const formatIcalDate = (dStr: string) => {
     const date = new Date(dStr);
@@ -46,6 +63,8 @@ export function generateIcalFeed(events: DbEventRecord[]): string {
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'X-WR-CALNAME:RAFV Community Calendar',
+    'NAME:RAFV Community Calendar',
+    'X-WR-CALDESC:RAFV Community Calendar - Local events, volunteer opportunities, networking, and community happenings.',
     'X-WR-TIMEZONE:UTC',
   ];
 
@@ -54,7 +73,7 @@ export function generateIcalFeed(events: DbEventRecord[]): string {
     const lastModified = formatIcalDate(ev.updated_at || ev.created_at || new Date().toISOString());
     
     lines.push('BEGIN:VEVENT');
-    lines.push(`UID:${ev.fingerprint}@community-calendar.rafv.realtor`);
+    lines.push(foldLine(`UID:${ev.fingerprint}@community-calendar.rafv.realtor`));
     lines.push(`DTSTAMP:${created}`);
     lines.push(`LAST-MODIFIED:${lastModified}`);
     
@@ -80,7 +99,7 @@ export function generateIcalFeed(events: DbEventRecord[]): string {
       lines.push(`DTEND:${formatIcalDate(endStr)}`);
     }
 
-    lines.push(`SUMMARY:${escapeText(ev.title)}`);
+    lines.push(foldLine(`SUMMARY:${escapeText(ev.title)}`));
 
     // Prepare Description
     let descriptionText = ev.description || '';
@@ -88,14 +107,14 @@ export function generateIcalFeed(events: DbEventRecord[]): string {
       if (descriptionText) descriptionText += '\n\n';
       descriptionText += `View Full Event: ${ev.url}`;
     }
-    lines.push(`DESCRIPTION:${escapeText(descriptionText)}`);
+    lines.push(foldLine(`DESCRIPTION:${escapeText(descriptionText)}`));
 
     if (ev.location) {
-      lines.push(`LOCATION:${escapeText(ev.location)}`);
+      lines.push(foldLine(`LOCATION:${escapeText(ev.location)}`));
     }
 
     if (ev.url) {
-      lines.push(`URL:${ev.url}`);
+      lines.push(foldLine(`URL:${ev.url}`));
     }
 
     lines.push('END:VEVENT');
