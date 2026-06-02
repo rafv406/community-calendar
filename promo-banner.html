@@ -12,9 +12,9 @@
       position: relative;
       width: 100%;
       min-height: 320px;
-      background: linear-gradient(90deg, #020c2e, #0d1b8a, #1a4fd6, #0a9ed1, #7b2fff, #0a9ed1, #1a4fd6, #0d1b8a, #020c2e);
-      background-size: 200% 100%;
-      animation: rafvBgShift 15s ease-in-out infinite alternate;
+      background: #ffffff;
+      border: 1px solid rgba(11, 27, 66, 0.1);
+      box-shadow: 0 4px 30px rgba(11, 27, 66, 0.05);
       overflow: hidden;
       display: flex;
       align-items: center;
@@ -22,11 +22,6 @@
       padding: 48px 24px;
       box-sizing: border-box;
       font-family: 'DM Sans', sans-serif;
-    }
-
-    @keyframes rafvBgShift {
-      0% { background-position: 0% 50%; }
-      100% { background-position: 100% 50%; }
     }
 
     /* Canvas background */
@@ -39,20 +34,13 @@
       pointer-events: none;
     }
 
-    /* Vignette & texture overlays */
+    /* Vignette & texture overlays - hidden for clean light look */
     .rafv-banner-overlay {
       position: absolute;
       inset: 0;
       pointer-events: none;
       z-index: 2;
-    }
-
-    .rafv-scanlines {
-      background: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0, 0, 0, 0.12) 3px, rgba(0, 0, 0, 0.12) 4px);
-    }
-
-    .rafv-gloss {
-      background: linear-gradient(to bottom, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 30%, transparent 60%);
+      display: none;
     }
 
     /* Content Wrapper */
@@ -61,7 +49,6 @@
       z-index: 3;
       max-width: 800px;
       text-align: center;
-      color: #ffffff;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -69,24 +56,22 @@
     }
 
     .rafv-banner-title {
-      color: #ffffff;
+      color: #0b1b42;
       font-size: clamp(24px, 4.5vw, 42px);
-      font-weight: 300;
+      font-weight: 700;
       letter-spacing: 0.15em;
       text-transform: uppercase;
       margin: 0;
       line-height: 1.2;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     }
 
     .rafv-banner-subheadline {
-      color: #ffffff;
+      color: #64748b;
       font-size: clamp(14px, 2vw, 18px);
       font-weight: 400;
       max-width: 600px;
       margin: 0 0 16px 0;
       line-height: 1.5;
-      text-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
     }
 
     /* Call-To-Action Button */
@@ -94,8 +79,8 @@
       display: inline-flex;
       align-items: center;
       gap: 12px;
-      background: #ffffff;
-      color: #0b1b42;
+      background: #0b1b42;
+      color: #ffffff;
       text-transform: uppercase;
       font-size: 12px;
       font-weight: 700;
@@ -103,14 +88,15 @@
       padding: 16px 36px;
       border-radius: 0;
       text-decoration: none;
+      border: 1px solid #0b1b42;
       transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 14px rgba(11, 27, 66, 0.15);
     }
 
     .rafv-banner-button:hover {
-      background: #0b1b42;
-      color: #ffffff;
-      box-shadow: 0 10px 30px rgba(11, 27, 66, 0.4), 0 0 15px rgba(0, 207, 232, 0.4);
+      background: transparent;
+      color: #0b1b42;
+      box-shadow: 0 8px 24px rgba(11, 27, 66, 0.15);
       transform: translateY(-2px);
     }
 
@@ -208,9 +194,8 @@
             const colRatio = c / (cols - 1);
             const zone = zones.find(z => colRatio < z.max) || zones[zones.length - 1];
 
-            // Determine base opacity (top rows dissolve, bottom rows are solid)
-            const baseOpacity = 0.05 + Math.pow(rowRatio, 3) * 0.75;
-            const isFullyColored = r >= rows - 3; // Bottom 3 rows get colors
+            // Subtle color dots on white background - very low base opacity so it remains clean
+            const baseOpacity = 0.04 + Math.pow(rowRatio, 3) * 0.16;
 
             dots.push({
               x: x,
@@ -218,11 +203,10 @@
               colRatio: colRatio,
               rowRatio: rowRatio,
               baseOpacity: baseOpacity,
-              isFullyColored: isFullyColored,
               color: zone,
               pulseOffset: Math.random() * Math.PI * 2,
-              pulseSpeed: 0.0015 + Math.random() * 0.001,
-              size: 2 + rowRatio * 2
+              pulseSpeed: 0.0012 + Math.random() * 0.0008,
+              size: 2.5 + rowRatio * 1.5
             });
           }
         }
@@ -259,20 +243,18 @@
           
           // Calculate ambient pulsing
           const pulse = Math.sin(timestamp * dot.pulseSpeed + dot.pulseOffset);
-          let opacity = dot.baseOpacity + (pulse * 0.08);
-          opacity = Math.max(0.01, Math.min(0.95, opacity));
+          let opacity = dot.baseOpacity + (pulse * 0.02);
+          opacity = Math.max(0.01, Math.min(0.8, opacity));
 
           let drawX = dot.x;
           let drawY = dot.y;
           let scale = 1;
           let glowOp = 0;
-          let r = 255, g = 255, b = 255;
-
-          if (dot.isFullyColored) {
-            r = dot.color.r;
-            g = dot.color.g;
-            b = dot.color.b;
-          }
+          
+          // All dots are colored based on their zone by default
+          let r = dot.color.r;
+          let g = dot.color.g;
+          let b = dot.color.b;
 
           // Apply interactive hover highlight
           if (mouse.active) {
@@ -285,25 +267,20 @@
             
             if (influence > 0) {
               const factor = influence * mouseActiveAmount;
-              scale += factor * 0.8;
-              opacity += factor * (1 - opacity) * 0.8;
-              glowOp = factor * 0.8;
-              
-              // Bring out full colored glow on hover even for white dots
-              r = Math.round(255 - (255 - dot.color.r) * factor);
-              g = Math.round(255 - (255 - dot.color.g) * factor);
-              b = Math.round(255 - (255 - dot.color.b) * factor);
+              scale += factor * 0.7;
+              opacity += factor * (0.6 - opacity); // swell to max 0.6 opacity for subtlety
+              glowOp = factor * 0.5;
             }
           }
 
-          // Draw Glow
+          // Draw Glow (Radial bloom transitioning to transparent/white)
           if (glowOp > 0.01) {
             ctx.beginPath();
-            const glowRadius = dot.size * scale * 4;
+            const glowRadius = dot.size * scale * 3.5;
             const gradient = ctx.createRadialGradient(drawX, drawY, dot.size * scale * 0.5, drawX, drawY, glowRadius);
-            gradient.addColorStop(0, `rgba(${dot.color.r}, ${dot.color.g}, ${dot.color.b}, ${glowOp * 0.6})`);
-            gradient.addColorStop(0.3, `rgba(${dot.color.r}, ${dot.color.g}, ${dot.color.b}, ${glowOp * 0.2})`);
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(0, `rgba(${dot.color.r}, ${dot.color.g}, ${dot.color.b}, ${glowOp * 0.5})`);
+            gradient.addColorStop(0.4, `rgba(${dot.color.r}, ${dot.color.g}, ${dot.color.b}, ${glowOp * 0.15})`);
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
             ctx.fillStyle = gradient;
             ctx.arc(drawX, drawY, glowRadius, 0, Math.PI * 2);
             ctx.fill();
