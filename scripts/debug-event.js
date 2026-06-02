@@ -8,23 +8,21 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 async function check() {
   const { data: events, error } = await supabase
     .from('events')
-    .select('title, url, location, raw_uid, fingerprint, source_name')
-    .eq('expired', false)
-    .limit(10);
+    .select('id, title, start_datetime, expired, updated_at')
+    .ilike('title', '%Avoid the Traps%')
+    .filter('start_datetime', 'eq', '2026-06-15T14:30:00+00:00');
   
   if (error) {
     console.error("Error:", error);
     return;
   }
 
-  console.log("--- Latest Upcoming Events ---");
+  console.log("--- Avoid the Traps June 15 Detail ---");
   events.forEach(e => {
+    console.log(`ID: ${e.id}`);
     console.log(`Title: ${e.title}`);
-    console.log(`Source: ${e.source_name}`);
-    console.log(`URL: ${e.url}`);
-    console.log(`Location: ${e.location}`);
-    console.log(`Raw UID: ${e.raw_uid}`);
-    console.log(`Fingerprint: ${e.fingerprint}`);
+    console.log(`Expired: ${e.expired}`);
+    console.log(`Updated At: ${e.updated_at}`);
     console.log('---');
   });
 }

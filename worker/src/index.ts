@@ -1,7 +1,7 @@
 import { Source, NormalizedEvent, SyncResult } from './types';
 import { parseICalFeed } from './parsers/ical';
 import { parseRssFeed } from './parsers/rss';
-import { upsertEvents, updateSourceStatus, Env } from './db';
+import { upsertEvents, updateSourceStatus, expireStaleEvents, Env } from './db';
 import { generateIcalFeed } from './ical-generator';
 
 async function fetchSources(env: Env): Promise<Source[]> {
@@ -18,6 +18,7 @@ async function fetchSources(env: Env): Promise<Source[]> {
 async function syncSource(source: Source, env: Env): Promise<SyncResult> {
   let events: NormalizedEvent[] = [];
   let error: string | null = null;
+  const syncStartTime = new Date().toISOString();
 
   try {
     if (source.source_type === 'ical') {
@@ -32,6 +33,12 @@ async function syncSource(source: Source, env: Env): Promise<SyncResult> {
         new Map(events.map(ev => [ev.fingerprint, ev])).values()
       );
       await upsertEvents(uniqueEvents, env);
+      
+      // Expire events that were NOT in this sync (using updated_at < syncStartTime)
+      // We only do this if we actually found events in the feed to avoid 
+      // accidentally wiping a source if the feed is temporarily empty.
+      await expireStaleEvents(source.id, syncStartTime, env);
+      
       events = uniqueEvents;
     }
 

@@ -76,7 +76,7 @@ export function generateIcalFeed(events: DbEventRecord[]): string {
     'METHOD:PUBLISH',
     'X-WR-CALNAME:RAFV Community Calendar',
     'NAME:RAFV Community Calendar',
-    'X-WR-CALDESC:RAFV Community Calendar - Local events, volunteer opportunities, networking, and community happenings.',
+    'X-WR-CALDESC:Local real estate events, volunteer opportunities, and community happenings.',
     'X-WR-TIMEZONE:UTC',
   ];
 

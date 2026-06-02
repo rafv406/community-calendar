@@ -64,3 +64,25 @@ export async function updateSourceStatus(
     console.error(`Failed to update source status for ${sourceId}:`, await res.text());
   }
 }
+
+export async function expireStaleEvents(sourceId: string, before: string, env: Env) {
+  const url = new URL(`${env.SUPABASE_URL}/rest/v1/events`);
+  url.searchParams.set('source_id', `eq.${sourceId}`);
+  url.searchParams.set('expired', `eq.false`);
+  url.searchParams.set('updated_at', `lt.${before}`);
+
+  const res = await fetch(url.toString(), {
+    method: 'PATCH',
+    headers: {
+      'apikey': env.SUPABASE_SERVICE_KEY,
+      'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ expired: true })
+  });
+
+  if (!res.ok) {
+    console.error(`Failed to expire stale events for source ${sourceId}:`, await res.text());
+  }
+}
