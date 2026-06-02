@@ -71,11 +71,11 @@ export async function parseICalFeed(source: Source): Promise<NormalizedEvent[]> 
           if (location && typeof location === 'object' && (location as any).val) location = (location as any).val;
           location = location ? (location as string).trim() || null : null;
           
-          let url = ev.url ? ev.url.slice() : null;
-          if (url && typeof url === 'object' && (url as any).val) url = (url as any).val;
+          let url = ev.url ? (typeof ev.url === 'string' ? ev.url : (ev.url as any).val) : null;
 
           if (!url && description) {
-            const urlMatch = description.match(/(https?|webcal):\/\/[^\s]+/i);
+            // More robust URL matching that handles common iCal description patterns
+            const urlMatch = description.match(/(https?|webcal):\/\/[^\s\r\n\(\)\[\]\{\}]+(?=[ \t\r\n\)\}\]]|$)/i);
             if (urlMatch) {
               url = urlMatch[0];
             }
@@ -101,7 +101,7 @@ export async function parseICalFeed(source: Source): Promise<NormalizedEvent[]> 
             source_id: source.id,
             source_name: source.name,
             categories,
-            raw_uid: eventAny.uid || null,
+            raw_uid: ev.uid || null,
             fingerprint
           });
         }

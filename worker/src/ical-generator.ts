@@ -45,13 +45,25 @@ export function generateIcalFeed(events: DbEventRecord[]): string {
       pad(date.getUTCDate());
   };
 
-  // Helper to escape values for iCal per RFC 5545
+  // Helper to escape values for iCal TEXT properties per RFC 5545
   const escapeText = (str: string | null | undefined): string => {
     if (!str) return '';
     return str
       .replace(/\\/g, '\\\\')
       .replace(/;/g, '\\;')
       .replace(/,/g, '\\,')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '');
+  };
+
+  // Helper to escape values for iCal but LESS aggressive with commas for URLs
+  const escapeDescription = (str: string | null | undefined): string => {
+    if (!str) return '';
+    return str
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      // We don't escape commas in description because it often breaks URLs 
+      // for "dumb" parsers like Google Calendar's link detector
       .replace(/\n/g, '\\n')
       .replace(/\r/g, '');
   };
@@ -73,7 +85,8 @@ export function generateIcalFeed(events: DbEventRecord[]): string {
     const lastModified = formatIcalDate(ev.updated_at || ev.created_at || new Date().toISOString());
     
     lines.push('BEGIN:VEVENT');
-    lines.push(foldLine(`UID:${ev.raw_uid || ev.fingerprint}@community-calendar.rafv.realtor`));
+    // Don't fold UID as it can break some parsers
+    lines.push(`UID:${ev.raw_uid || ev.fingerprint}@community-calendar.rafv.realtor`);
     lines.push(`DTSTAMP:${created}`);
     lines.push(`LAST-MODIFIED:${lastModified}`);
     
@@ -107,14 +120,25 @@ export function generateIcalFeed(events: DbEventRecord[]): string {
       if (descriptionText) descriptionText += '\n\n';
       descriptionText += `View Full Event: ${ev.url}`;
     }
-    lines.push(foldLine(`DESCRIPTION:${escapeText(descriptionText)}`));
+    
+    // Plain text description
+    lines.push(foldLine(`DESCRIPTION:${escapeDescription(descriptionText)}`));
+
+    // HTML description (Google Calendar favors this)
+    let htmlDescription = (ev.description || '').replace(/\n/g, '<br>');
+    if (ev.url) {
+      if (htmlDescription) htmlDescription += '<br><br>';
+      htmlDescription += `<a href="${ev.url}">View Full Event Details</a>`;
+    }
+    lines.push(foldLine(`X-ALT-DESC;FMTTYPE=text/html:${escapeDescription(htmlDescription)}`));
 
     if (ev.location) {
       lines.push(foldLine(`LOCATION:${escapeText(ev.location)}`));
     }
 
     if (ev.url) {
-      lines.push(foldLine(`URL:${ev.url}`));
+      // Don't fold URL
+      lines.push(`URL:${ev.url}`);
     }
 
     lines.push('END:VEVENT');
