@@ -60,9 +60,18 @@ export function cleanDescription(html: string | null): string {
 
   let text = stripHtmlAndDecode(html);
 
+  // Remove "Latest event details:" block at the beginning
+  text = text.replace(/^Latest event details:\s*/i, '');
+
   // 1. Remove all URLs (http, https, webcal)
   // We match standard URLs and also those wrapped in brackets/parentheses
   text = text.replace(/(https?|webcal):\/\/[^\s]+/gi, '');
+
+  // Remove leading dividers or lines left after stripping the prefix/URL
+  text = text.trim();
+  if (text.startsWith('---')) {
+    text = text.replace(/^---+\s*/, '');
+  }
 
   // 2. Remove common trailing "call to action" phrases that points to the URL we just removed
   const redundantPhrases = [

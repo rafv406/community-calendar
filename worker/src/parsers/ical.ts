@@ -79,6 +79,13 @@ export async function parseICalFeed(source: Source): Promise<NormalizedEvent[]> 
           let url = ev.url ? ev.url.slice() : null;
           if (url && typeof url === 'object' && (url as any).val) url = (url as any).val;
 
+          if (!url && description) {
+            const urlMatch = description.match(/(https?|webcal):\/\/[^\s]+/i);
+            if (urlMatch) {
+              url = urlMatch[0];
+            }
+          }
+
           const fingerprint = await generateFingerprint(title, start, source.id);
 
           events.push({
