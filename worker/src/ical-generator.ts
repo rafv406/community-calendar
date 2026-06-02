@@ -73,7 +73,7 @@ export function generateIcalFeed(events: DbEventRecord[]): string {
     const lastModified = formatIcalDate(ev.updated_at || ev.created_at || new Date().toISOString());
     
     lines.push('BEGIN:VEVENT');
-    lines.push(foldLine(`UID:${ev.fingerprint}@community-calendar.rafv.realtor`));
+    lines.push(foldLine(`UID:${ev.raw_uid || ev.fingerprint}@community-calendar.rafv.realtor`));
     lines.push(`DTSTAMP:${created}`);
     lines.push(`LAST-MODIFIED:${lastModified}`);
     
