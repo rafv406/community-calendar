@@ -181,6 +181,126 @@ main {
   box-shadow: 0 10px 20px -5px rgba(11, 27, 66, 0.15);
 }
 
+/* ── ICAL SUBSCRIBE BAR ── */
+.ical-bar-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: textUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 2.1s forwards;
+  width: 100%;
+  padding: 0 24px;
+}
+
+.ical-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 51, 153, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 9px 14px 9px 16px;
+  border-radius: 6px;
+  box-shadow: 0 2px 12px rgba(0, 51, 153, 0.07);
+  max-width: 540px;
+  width: 100%;
+  min-width: 0;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.ical-bar:hover {
+  border-color: rgba(0, 51, 153, 0.22);
+  box-shadow: 0 4px 18px rgba(0, 51, 153, 0.1);
+}
+
+.ical-bar-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-primary);
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+.ical-bar-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ical-bar-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(0, 51, 153, 0.12);
+  flex-shrink: 0;
+}
+
+.ical-bar-url {
+  font-family: 'DM Mono', 'Menlo', 'Consolas', monospace;
+  font-size: 11px;
+  color: var(--color-navy);
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  opacity: 0.8;
+}
+
+.ical-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 51, 153, 0.18);
+  background: rgba(0, 51, 153, 0.05);
+  color: var(--color-primary);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  white-space: nowrap;
+}
+
+.ical-copy-btn:hover {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(0, 51, 153, 0.2);
+}
+
+.ical-copy-btn.copied {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+@media (max-width: 600px) {
+  .ical-bar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .ical-bar-label {
+    display: none;
+  }
+
+  .ical-bar-divider {
+    display: none;
+  }
+}
+
 /* ── BAR WRAP + REFLECTION ── */
 .bar-scene {
   width: 100%;

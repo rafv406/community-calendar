@@ -6,8 +6,55 @@ import { Logo } from '../components/Logo';
 import { Footer } from '../components/Footer';
 import { HeaderHorizon } from '../components/HeaderHorizon';
 import { CarouselVignette } from '../components/CarouselVignette';
-import { ChevronLeft, ChevronRight, Search, Calendar, MapPin, Filter, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Calendar, MapPin, Filter, Clock, Copy, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+const ICAL_URL = 'https://community-calendar.rafv.realtor/feed.ics';
+
+const IcalBar = () => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(ICAL_URL);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      // fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = ICAL_URL;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    }
+  };
+
+  return (
+    <div className="ical-bar-wrap">
+      <div className="ical-bar">
+        <Calendar className="ical-bar-icon" />
+        <span className="ical-bar-label">Subscribe to our iCal feed</span>
+        <span className="ical-bar-divider" />
+        <span className="ical-bar-url">{ICAL_URL}</span>
+        <button
+          id="ical-copy-btn"
+          className={`ical-copy-btn${copied ? ' copied' : ''}`}
+          onClick={handleCopy}
+          aria-label="Copy iCal link"
+        >
+          {copied ? <Check size={14} strokeWidth={2.5} /> : <Copy size={14} strokeWidth={2} />}
+          <span>{copied ? 'Copied!' : 'Copy'}</span>
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const hexToRgba = (hex: string, a: number) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -853,6 +900,8 @@ export const CalendarView = () => {
               ALL EVENTS
             </button>
           </div>
+
+          <IcalBar />
         </div>
 
         <HeaderHorizon />
