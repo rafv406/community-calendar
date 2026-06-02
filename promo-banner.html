@@ -1,305 +1,294 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RAFV Event Calendar Promo Banner</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&display=swap');
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&display=swap');
 
-    /* Banner Container styling */
-    .rafv-banner-container {
-      position: relative;
-      width: 100%;
-      min-height: 320px;
-      background: #ffffff;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 48px 24px;
-      box-sizing: border-box;
-      font-family: 'DM Sans', sans-serif;
-    }
+  /* Scope all styles strictly to prevent WordPress leakage */
+  .rafv-banner-container {
+    position: relative;
+    width: 100%;
+    min-height: 320px;
+    background: #ffffff;
+    border: 1px solid rgba(11, 27, 66, 0.1);
+    box-shadow: 0 4px 30px rgba(11, 27, 66, 0.05);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    box-sizing: border-box;
+    font-family: 'DM Sans', sans-serif;
+  }
 
-    /* Canvas background */
-    .rafv-banner-canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-      pointer-events: none;
-    }
+  /* Canvas background */
+  .rafv-banner-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+  }
 
-    /* Vignette & texture overlays - hidden for clean light look */
-    .rafv-banner-overlay {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 2;
-      display: none;
-    }
+  /* Vignette & texture overlays - hidden for clean light look */
+  .rafv-banner-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    display: none;
+  }
 
-    /* Content Wrapper */
-    .rafv-banner-content {
-      position: relative;
-      z-index: 3;
-      max-width: 800px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-    }
+  /* Content Wrapper */
+  .rafv-banner-content {
+    position: relative;
+    z-index: 3;
+    max-width: 800px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
 
-    .rafv-banner-title {
-      color: #0b1b42;
-      font-size: clamp(24px, 4.5vw, 42px);
-      font-weight: 700;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      margin: 0;
-      line-height: 1.2;
-    }
+  .rafv-banner-title {
+    color: #0b1b42;
+    font-size: clamp(24px, 4.5vw, 42px);
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin: 0;
+    line-height: 1.2;
+  }
 
-    .rafv-banner-subheadline {
-      color: #64748b;
-      font-size: clamp(14px, 2vw, 18px);
-      font-weight: 400;
-      max-width: 600px;
-      margin: 0 0 16px 0;
-      line-height: 1.5;
-    }
+  .rafv-banner-subheadline {
+    color: #64748b;
+    font-size: clamp(14px, 2vw, 18px);
+    font-weight: 400;
+    max-width: 600px;
+    margin: 0 0 16px 0;
+    line-height: 1.5;
+  }
 
-    /* Call-To-Action Button */
-    .rafv-banner-button {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      background: #0b1b42;
-      color: #ffffff;
-      text-transform: uppercase;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.2em;
-      padding: 16px 36px;
-      border-radius: 0;
-      text-decoration: none;
-      border: 1px solid #0b1b42;
-      transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-      box-shadow: 0 4px 14px rgba(11, 27, 66, 0.15);
-    }
+  /* Call-To-Action Button */
+  .rafv-banner-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: #0b1b42;
+    color: #ffffff;
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    padding: 16px 36px;
+    border-radius: 0;
+    text-decoration: none;
+    border: 1px solid #0b1b42;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 4px 14px rgba(11, 27, 66, 0.15);
+  }
 
-    .rafv-banner-button:hover {
-      background: transparent;
-      color: #0b1b42;
-      box-shadow: 0 8px 24px rgba(11, 27, 66, 0.15);
-      transform: translateY(-2px);
-    }
+  .rafv-banner-button:hover {
+    background: transparent;
+    color: #0b1b42;
+    box-shadow: 0 8px 24px rgba(11, 27, 66, 0.15);
+    transform: translateY(-2px);
+  }
 
-    .rafv-arrow-icon {
-      width: 16px;
-      height: 16px;
-      transition: transform 0.3s ease;
-    }
+  .rafv-arrow-icon {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s ease;
+  }
 
-    .rafv-banner-button:hover .rafv-arrow-icon {
-      transform: translateX(4px);
-    }
-  </style>
-</head>
-<body style="margin: 0; padding: 20px; background: #f8fafc; font-family: sans-serif;">
+  .rafv-banner-button:hover .rafv-arrow-icon {
+    transform: translateX(4px);
+  }
+</style>
 
-  <!-- START BANNER EMBED BLOCK -->
-  <section class="rafv-banner-container" id="rafv-promo-banner">
-    <!-- Canvas for interactive dots -->
-    <canvas class="rafv-banner-canvas" id="rafv-banner-canvas"></canvas>
+<section class="rafv-banner-container" id="rafv-promo-banner">
+  <!-- Canvas for interactive dots -->
+  <canvas class="rafv-banner-canvas" id="rafv-banner-canvas"></canvas>
+  
+  <!-- Depth overlays -->
+  <div class="rafv-banner-overlay rafv-scanlines"></div>
+  <div class="rafv-banner-overlay rafv-gloss"></div>
+  
+  <!-- Central Content -->
+  <div class="rafv-banner-content">
+    <h1 class="rafv-banner-title">RAFV Community Event Calendar</h1>
+    <p class="rafv-banner-subheadline">Your centralized hub for regional REALTOR® and community partner events.</p>
+    <a href="https://community-calendar.rafv.realtor" target="_blank" class="rafv-banner-button">
+      Explore Calendar
+      <svg class="rafv-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
+      </svg>
+    </a>
+  </div>
+</section>
+
+<script>
+  (function() {
+    const canvas = document.getElementById('rafv-banner-canvas');
+    const container = document.getElementById('rafv-promo-banner');
+    if (!canvas || !container) return;
+
+    const ctx = canvas.getContext('2d');
+    let dots = [];
+    let width = 0;
+    let height = 0;
+    const spacing = 32; // Spacing between dots in pixels
     
-    <!-- Depth overlays -->
-    <div class="rafv-banner-overlay rafv-scanlines"></div>
-    <div class="rafv-banner-overlay rafv-gloss"></div>
-    
-    <!-- Central Content -->
-    <div class="rafv-banner-content">
-      <h1 class="rafv-banner-title">RAFV Community Event Calendar</h1>
-      <p class="rafv-banner-subheadline">Your centralized hub for regional REALTOR® and community partner events.</p>
-      <a href="https://community-calendar.rafv.realtor" target="_blank" class="rafv-banner-button">
-        Explore Calendar
-        <svg class="rafv-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
-      </a>
-    </div>
-  </section>
-  <!-- END BANNER EMBED BLOCK -->
+    // Mouse state
+    const mouse = { x: 0, y: 0, active: false, targetActive: false };
 
-  <script>
-    (function() {
-      const canvas = document.getElementById('rafv-banner-canvas');
-      const container = document.getElementById('rafv-promo-banner');
-      if (!canvas || !container) return;
+    // Zone definitions for horizontal color glows matching HeaderHorizon
+    const zones = [
+      { max: 0.28, r: 6, g: 182, b: 212 },   // Cyan
+      { max: 0.55, r: 139, g: 92, b: 246 },  // Violet
+      { max: 0.75, r: 217, g: 70, b: 239 },  // Magenta
+      { max: 1.00, r: 249, g: 115, b: 22 }   // Orange
+    ];
 
-      const ctx = canvas.getContext('2d');
-      let dots = [];
-      let width = 0;
-      let height = 0;
-      const spacing = 32; // Spacing between dots in pixels
+    function resize() {
+      const rect = container.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
       
-      // Mouse state
-      const mouse = { x: 0, y: 0, active: false, targetActive: false };
+      // Handle high DPI screens
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+      
+      initGrid();
+    }
 
-      // Zone definitions for horizontal color glows matching HeaderHorizon
-      const zones = [
-        { max: 0.28, r: 6, g: 182, b: 212 },   // Cyan
-        { max: 0.55, r: 139, g: 92, b: 246 },  // Violet
-        { max: 0.75, r: 217, g: 70, b: 239 },  // Magenta
-        { max: 1.00, r: 249, g: 115, b: 22 }   // Orange
-      ];
+    function initGrid() {
+      dots = [];
+      const cols = Math.floor(width / spacing) + 2;
+      const rows = Math.floor(height / spacing) + 2;
+      
+      const xOffset = (width - (cols - 1) * spacing) / 2;
+      const yOffset = (height - (rows - 1) * spacing) / 2;
 
-      function resize() {
-        const rect = container.getBoundingClientRect();
-        width = rect.width;
-        height = rect.height;
-        
-        // Handle high DPI screens
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
-        ctx.scale(dpr, dpr);
-        
-        initGrid();
-      }
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x = xOffset + c * spacing;
+          const y = yOffset + r * spacing;
+          
+          // Row ratio: 0 at top, 1 at bottom
+          const rowRatio = r / (rows - 1);
+          
+          // Left-to-right ratio
+          const colRatio = c / (cols - 1);
+          const zone = zones.find(z => colRatio < z.max) || zones[zones.length - 1];
 
-      function initGrid() {
-        dots = [];
-        const cols = Math.floor(width / spacing) + 2;
-        const rows = Math.floor(height / spacing) + 2;
-        
-        const xOffset = (width - (cols - 1) * spacing) / 2;
-        const yOffset = (height - (rows - 1) * spacing) / 2;
+          // Subtle color dots on white background - very low base opacity so it remains clean
+          const baseOpacity = 0.04 + Math.pow(rowRatio, 3) * 0.16;
 
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            const x = xOffset + c * spacing;
-            const y = yOffset + r * spacing;
-            
-            // Row ratio: 0 at top, 1 at bottom
-            const rowRatio = r / (rows - 1);
-            
-            // Left-to-right ratio
-            const colRatio = c / (cols - 1);
-            const zone = zones.find(z => colRatio < z.max) || zones[zones.length - 1];
-
-            // Subtle color dots on white background - very low base opacity so it remains clean
-            const baseOpacity = 0.04 + Math.pow(rowRatio, 3) * 0.16;
-
-            dots.push({
-              x: x,
-              y: y,
-              colRatio: colRatio,
-              rowRatio: rowRatio,
-              baseOpacity: baseOpacity,
-              color: zone,
-              pulseOffset: Math.random() * Math.PI * 2,
-              pulseSpeed: 0.0012 + Math.random() * 0.0008,
-              size: 2.5 + rowRatio * 1.5
-            });
-          }
+          dots.push({
+            x: x,
+            y: y,
+            colRatio: colRatio,
+            rowRatio: rowRatio,
+            baseOpacity: baseOpacity,
+            color: zone,
+            pulseOffset: Math.random() * Math.PI * 2,
+            pulseSpeed: 0.0012 + Math.random() * 0.0008,
+            size: 2.5 + rowRatio * 1.5
+          });
         }
       }
+    }
 
-      // Mouse Tracking
-      container.addEventListener('mousemove', function(e) {
-        const rect = container.getBoundingClientRect();
-        mouse.x = e.clientX - rect.left;
-        mouse.y = e.clientY - rect.top;
-        mouse.targetActive = true;
-      });
+    // Mouse Tracking
+    container.addEventListener('mousemove', function(e) {
+      const rect = container.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+      mouse.targetActive = true;
+    });
 
-      container.addEventListener('mouseleave', function() {
-        mouse.targetActive = false;
-      });
+    container.addEventListener('mouseleave', function() {
+      mouse.targetActive = false;
+    });
 
-      // Ease mouse active status to prevent harsh snap on/off
-      let mouseActiveAmount = 0;
+    // Ease mouse active status to prevent harsh snap on/off
+    let mouseActiveAmount = 0;
 
-      function render(timestamp) {
-        ctx.clearRect(0, 0, width, height);
+    function render(timestamp) {
+      ctx.clearRect(0, 0, width, height);
 
-        // Interpolate mouse activity level
-        if (mouse.targetActive) {
-          mouseActiveAmount += (1 - mouseActiveAmount) * 0.1;
-        } else {
-          mouseActiveAmount += (0 - mouseActiveAmount) * 0.1;
+      // Interpolate mouse activity level
+      if (mouse.targetActive) {
+        mouseActiveAmount += (1 - mouseActiveAmount) * 0.1;
+      } else {
+        mouseActiveAmount += (0 - mouseActiveAmount) * 0.1;
+      }
+      mouse.active = mouseActiveAmount > 0.01;
+
+      for (let i = 0; i < dots.length; i++) {
+        const dot = dots[i];
+        
+        // Calculate ambient pulsing
+        const pulse = Math.sin(timestamp * dot.pulseSpeed + dot.pulseOffset);
+        let opacity = dot.baseOpacity + (pulse * 0.02);
+        opacity = Math.max(0.01, Math.min(0.8, opacity));
+
+        let drawX = dot.x;
+        let drawY = dot.y;
+        let scale = 1;
+        let glowOp = 0;
+        
+        // All dots are colored based on their zone by default
+        let r = dot.color.r;
+        let g = dot.color.g;
+        let b = dot.color.b;
+
+        // Apply interactive hover highlight
+        if (mouse.active) {
+          const dx = dot.x - mouse.x;
+          const dy = dot.y - mouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          // 140px influence radius
+          const influence = Math.max(0, 1 - dist / 140);
+          
+          if (influence > 0) {
+            const factor = influence * mouseActiveAmount;
+            scale += factor * 0.7;
+            opacity += factor * (0.6 - opacity); // swell to max 0.6 opacity for subtlety
+            glowOp = factor * 0.5;
+          }
         }
-        mouse.active = mouseActiveAmount > 0.01;
 
-        for (let i = 0; i < dots.length; i++) {
-          const dot = dots[i];
-          
-          // Calculate ambient pulsing
-          const pulse = Math.sin(timestamp * dot.pulseSpeed + dot.pulseOffset);
-          let opacity = dot.baseOpacity + (pulse * 0.02);
-          opacity = Math.max(0.01, Math.min(0.8, opacity));
-
-          let drawX = dot.x;
-          let drawY = dot.y;
-          let scale = 1;
-          let glowOp = 0;
-          
-          // All dots are colored based on their zone by default
-          let r = dot.color.r;
-          let g = dot.color.g;
-          let b = dot.color.b;
-
-          // Apply interactive hover highlight
-          if (mouse.active) {
-            const dx = dot.x - mouse.x;
-            const dy = dot.y - mouse.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            
-            // 140px influence radius
-            const influence = Math.max(0, 1 - dist / 140);
-            
-            if (influence > 0) {
-              const factor = influence * mouseActiveAmount;
-              scale += factor * 0.7;
-              opacity += factor * (0.6 - opacity); // swell to max 0.6 opacity for subtlety
-              glowOp = factor * 0.5;
-            }
-          }
-
-          // Draw Glow (Radial bloom transitioning to transparent/white)
-          if (glowOp > 0.01) {
-            ctx.beginPath();
-            const glowRadius = dot.size * scale * 3.5;
-            const gradient = ctx.createRadialGradient(drawX, drawY, dot.size * scale * 0.5, drawX, drawY, glowRadius);
-            gradient.addColorStop(0, `rgba(${dot.color.r}, ${dot.color.g}, ${dot.color.b}, ${glowOp * 0.5})`);
-            gradient.addColorStop(0.4, `rgba(${dot.color.r}, ${dot.color.g}, ${dot.color.b}, ${glowOp * 0.15})`);
-            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            ctx.fillStyle = gradient;
-            ctx.arc(drawX, drawY, glowRadius, 0, Math.PI * 2);
-            ctx.fill();
-          }
-
-          // Draw dot core
+        // Draw Glow (Radial bloom transitioning to transparent/white)
+        if (glowOp > 0.01) {
           ctx.beginPath();
-          ctx.arc(drawX, drawY, dot.size * scale * 0.5, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+          const glowRadius = dot.size * scale * 3.5;
+          const gradient = ctx.createRadialGradient(drawX, drawY, dot.size * scale * 0.5, drawX, drawY, glowRadius);
+          gradient.addColorStop(0, `rgba(${dot.color.r}, ${dot.color.g}, ${dot.color.b}, ${glowOp * 0.5})`);
+          gradient.addColorStop(0.4, `rgba(${dot.color.r}, ${dot.color.g}, ${dot.color.b}, ${glowOp * 0.15})`);
+          gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = gradient;
+          ctx.arc(drawX, drawY, glowRadius, 0, Math.PI * 2);
           ctx.fill();
         }
 
-        requestAnimationFrame(render);
+        // Draw dot core
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, dot.size * scale * 0.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        ctx.fill();
       }
 
-      // Initialize
-      window.addEventListener('resize', resize);
-      resize();
       requestAnimationFrame(render);
-    })();
-  </script>
+    }
 
-</body>
-</html>
+    // Initialize
+    window.addEventListener('resize', resize);
+    resize();
+    requestAnimationFrame(render);
+  })();
+</script>
