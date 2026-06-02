@@ -51,11 +51,6 @@ export async function parseICalFeed(source: Source): Promise<NormalizedEvent[]> 
           const cleanDesc = truncateDescription(cleanDescription(description));
           const categories = extractCategories(title + ' ' + cleanDesc);
           
-          // Label Free events (training exercise)
-          if (cleanDesc.toLowerCase().includes('free')) {
-            title = "[FREE] " + title;
-          }
-
           const rawStart = normalizeDate(ev.start);
           if (!rawStart) continue;
           const start = rawStart as string;
@@ -86,7 +81,13 @@ export async function parseICalFeed(source: Source): Promise<NormalizedEvent[]> 
             }
           }
 
+          // Generate fingerprint using the stable title BEFORE we add [FREE]
           const fingerprint = await generateFingerprint(title, start, source.id);
+
+          // Label Free events (training exercise)
+          if (cleanDesc.toLowerCase().includes('free')) {
+            title = "[FREE] " + title;
+          }
 
           events.push({
             title,
