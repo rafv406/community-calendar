@@ -1,0 +1,414 @@
+# Interactive Promo Banner Implementation Plan
+
+> **For agentic workers:** REQUIRED: Use superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Create a standalone, copy-pasteable HTML promotional banner promoting the RAFV Community Event Calendar that features the Event Horizon holographic gradient animation and an interactive, pulsing canvas dot grid.
+
+**Architecture:** A single self-contained HTML file containing HTML structure, inline/embedded CSS for layout and animations, and JavaScript for rendering and animating the responsive dot grid on a 2D `<canvas>` overlay.
+
+**Tech Stack:** HTML5, CSS3 (CSS Variables, Flexbox, Keyframe Animations), Vanilla JavaScript (Canvas 2D Context, requestAnimationFrame, Event Listeners).
+
+---
+
+## Proposed Changes
+
+### Standalone Banner Component
+#### [NEW] [promo-banner.html](file:///c:/Users/JacobBranscom/OneDrive%20-%20Realtors%20Association%20of%20the%20Fox%20Valley/Documents/Community%20Calendar/promo-banner.html)
+A standalone file containing all layout, styling, and canvas scripts.
+
+---
+
+## Tasks
+
+### Task 1: Initialize HTML Structure
+
+**Files:**
+- Create: `promo-banner.html`
+
+- [ ] **Step 1: Write HTML markup**
+  Create the basic layout structure including the container, background canvas, vignette overlays, and content overlay.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAFV Event Calendar Promo Banner</title>
+</head>
+<body style="margin: 0; padding: 20px; background: #f8fafc; font-family: sans-serif;">
+
+  <!-- START BANNER EMBED BLOCK -->
+  <section class="rafv-banner-container" id="rafv-promo-banner">
+    <!-- Canvas for interactive dots -->
+    <canvas class="rafv-banner-canvas" id="rafv-banner-canvas"></canvas>
+    
+    <!-- Depth overlays -->
+    <div class="rafv-banner-overlay rafv-scanlines"></div>
+    <div class="rafv-banner-overlay rafv-gloss"></div>
+    
+    <!-- Central Content -->
+    <div class="rafv-banner-content">
+      <h1 class="rafv-banner-title">RAFV Community Event Calendar</h1>
+      <p class="rafv-banner-subheadline">Your centralized hub for regional REALTOR® and community partner events.</p>
+      <a href="https://community-calendar.rafv.realtor" target="_blank" class="rafv-banner-button">
+        Explore Calendar
+        <svg class="rafv-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+    </div>
+  </section>
+  <!-- END BANNER EMBED BLOCK -->
+
+</body>
+</html>
+```
+
+- [ ] **Step 2: Commit initial file**
+  ```bash
+  git add promo-banner.html
+  git commit -m "feat: initialize basic HTML markup for promo banner"
+  ```
+
+---
+
+### Task 2: CSS Styling and Keyframe Animations
+
+**Files:**
+- Modify: `promo-banner.html`
+
+- [ ] **Step 1: Add CSS styling in the `<head>`**
+  Write the core CSS rules, including custom font loading, CSS variables, holographic gradient animation, overlay aesthetics, responsive padding, and button transitions.
+
+```html
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&display=swap');
+
+  /* Banner Container styling */
+  .rafv-banner-container {
+    position: relative;
+    width: 100%;
+    min-height: 320px;
+    background: linear-gradient(90deg, #020c2e, #0d1b8a, #1a4fd6, #0a9ed1, #7b2fff, #0a9ed1, #1a4fd6, #0d1b8a, #020c2e);
+    background-size: 200% 100%;
+    animation: rafvBgShift 15s ease-in-out infinite alternate;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    box-sizing: border-box;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  @keyframes rafvBgShift {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+  }
+
+  /* Canvas background */
+  .rafv-banner-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* Vignette & texture overlays */
+  .rafv-banner-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .rafv-scanlines {
+    background: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0, 0, 0, 0.12) 3px, rgba(0, 0, 0, 0.12) 4px);
+  }
+
+  .rafv-gloss {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 30%, transparent 60%);
+  }
+
+  /* Content Wrapper */
+  .rafv-banner-content {
+    position: relative;
+    z-index: 3;
+    max-width: 800px;
+    text-align: center;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .rafv-banner-title {
+    font-size: clamp(24px, 4.5vw, 42px);
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin: 0;
+    line-height: 1.2;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .rafv-banner-subheadline {
+    font-size: clamp(14px, 2vw, 18px);
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.85);
+    max-width: 600px;
+    margin: 0 0 16px 0;
+    line-height: 1.5;
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Call-To-Action Button */
+  .rafv-banner-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: #ffffff;
+    color: #0b1b42;
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    padding: 16px 36px;
+    border-radius: 0;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .rafv-banner-button:hover {
+    background: #0b1b42;
+    color: #ffffff;
+    box-shadow: 0 10px 30px rgba(11, 27, 66, 0.4), 0 0 15px rgba(0, 207, 232, 0.4);
+    transform: translateY(-2px);
+  }
+
+  .rafv-arrow-icon {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s ease;
+  }
+
+  .rafv-banner-button:hover .rafv-arrow-icon {
+    transform: translateX(4px);
+  }
+</style>
+```
+
+- [ ] **Step 2: Commit styling additions**
+  ```bash
+  git commit -am "style: add premium CSS styling and holographic animations"
+  ```
+
+---
+
+### Task 3: Interactive Canvas JS Engine
+
+**Files:**
+- Modify: `promo-banner.html`
+
+- [ ] **Step 1: Append JS script before the closing `</body>`**
+  Implement the canvas particle engine that calculates the dynamic responsive grid of pulsing dots and renders glows around the cursor position.
+
+```html
+<script>
+  (function() {
+    const canvas = document.getElementById('rafv-banner-canvas');
+    const container = document.getElementById('rafv-promo-banner');
+    if (!canvas || !container) return;
+
+    const ctx = canvas.getContext('2d');
+    let dots = [];
+    let width = 0;
+    let height = 0;
+    const spacing = 32; // Spacing between dots in pixels
+    
+    // Mouse state
+    const mouse = { x: 0, y: 0, active: false, targetActive: false };
+
+    // Zone definitions for horizontal color glows matching HeaderHorizon
+    const zones = [
+      { max: 0.28, r: 6, g: 182, b: 212 },   // Cyan
+      { max: 0.55, r: 139, g: 92, b: 246 },  // Violet
+      { max: 0.75, r: 217, g: 70, b: 239 },  // Magenta
+      { max: 1.00, r: 249, g: 115, b: 22 }   // Orange
+    ];
+
+    function resize() {
+      const rect = container.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      
+      // Handle high DPI screens
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+      
+      initGrid();
+    }
+
+    function initGrid() {
+      dots = [];
+      const cols = Math.floor(width / spacing) + 2;
+      const rows = Math.floor(height / spacing) + 2;
+      
+      const xOffset = (width - (cols - 1) * spacing) / 2;
+      const yOffset = (height - (rows - 1) * spacing) / 2;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x = xOffset + c * spacing;
+          const y = yOffset + r * spacing;
+          
+          // Row ratio: 0 at top, 1 at bottom
+          const rowRatio = r / (rows - 1);
+          
+          // Left-to-right ratio
+          const colRatio = c / (cols - 1);
+          const zone = zones.find(z => colRatio < z.max) || zones[zones.length - 1];
+
+          // Determine base opacity (top rows dissolve, bottom rows are solid)
+          const baseOpacity = 0.05 + Math.pow(rowRatio, 3) * 0.75;
+          const isFullyColored = r >= rows - 3; // Bottom 3 rows get colors
+
+          dots.push({
+            x: x,
+            y: y,
+            colRatio: colRatio,
+            rowRatio: rowRatio,
+            baseOpacity: baseOpacity,
+            isFullyColored: isFullyColored,
+            color: zone,
+            pulseOffset: Math.random() * Math.PI * 2,
+            pulseSpeed: 0.0015 + Math.random() * 0.001,
+            size: 2 + rowRatio * 2
+          });
+        }
+      }
+    }
+
+    // Mouse Tracking
+    container.addEventListener('mousemove', function(e) {
+      const rect = container.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+      mouse.targetActive = true;
+    });
+
+    container.addEventListener('mouseleave', function() {
+      mouse.targetActive = false;
+    });
+
+    // Ease mouse active status to prevent harsh snap on/off
+    let mouseActiveAmount = 0;
+
+    function render(timestamp) {
+      ctx.clearRect(0, 0, width, height);
+
+      // Interpolate mouse activity level
+      if (mouse.targetActive) {
+        mouseActiveAmount += (1 - mouseActiveAmount) * 0.1;
+      } else {
+        mouseActiveAmount += (0 - mouseActiveAmount) * 0.1;
+      }
+      mouse.active = mouseActiveAmount > 0.01;
+
+      for (let i = 0; i < dots.length; i++) {
+        const dot = dots[i];
+        
+        // Calculate ambient pulsing
+        const pulse = Math.sin(timestamp * dot.pulseSpeed + dot.pulseOffset);
+        let opacity = dot.baseOpacity + (pulse * 0.08);
+        opacity = Math.max(0.01, Math.min(0.95, opacity));
+
+        let drawX = dot.x;
+        let drawY = dot.y;
+        let scale = 1;
+        let glowOp = 0;
+        let r = 255, g = 255, b = 255;
+
+        if (dot.isFullyColored) {
+          r = dot.color.r;
+          g = dot.color.g;
+          b = dot.color.b;
+        }
+
+        // Apply interactive hover highlight
+        if (mouse.active) {
+          const dx = dot.x - mouse.x;
+          const dy = dot.y - mouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          // 120px influence radius
+          const influence = Math.max(0, 1 - dist / 140);
+          
+          if (influence > 0) {
+            const factor = influence * mouseActiveAmount;
+            scale += factor * 0.8;
+            opacity += factor * (1 - opacity) * 0.8;
+            glowOp = factor * 0.8;
+            
+            // Bring out full colored glow on hover even for white dots
+            r = Math.round(255 - (255 - dot.color.r) * factor);
+            g = Math.round(255 - (255 - dot.color.g) * factor);
+            b = Math.round(255 - (255 - dot.color.b) * factor);
+          }
+        }
+
+        // Draw Glow
+        if (glowOp > 0.01) {
+          ctx.beginPath();
+          const glowRadius = dot.size * scale * 4;
+          const gradient = ctx.createRadialGradient(drawX, drawY, dot.size * scale * 0.5, drawX, drawY, glowRadius);
+          gradient.addColorStop(0, `rgba(${dot.color.r}, ${dot.color.g}, ${dot.color.b}, ${glowOp * 0.6})`);
+          gradient.addColorStop(0.3, `rgba(${dot.color.r}, ${dot.color.g}, ${dot.color.b}, ${glowOp * 0.2})`);
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = gradient;
+          ctx.arc(drawX, drawY, glowRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Draw dot core
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, dot.size * scale * 0.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        ctx.fill();
+      }
+
+      requestAnimationFrame(render);
+    }
+
+    // Initialize
+    window.addEventListener('resize', resize);
+    resize();
+    requestAnimationFrame(render);
+  })();
+</script>
+```
+
+- [ ] **Step 2: Commit JS engine**
+  ```bash
+  git commit -am "feat: implement high-performance canvas dot grid animation and interactivity"
+  ```
+
+---
+
+## Verification Plan
+
+### Manual Verification
+* [ ] Open `promo-banner.html` directly in a browser.
+* [ ] Verify that the background gradient sweeps smoothly between dark blue, cyan, purple, and orange.
+* [ ] Verify that the canvas dots pulse subtly and organically when the cursor is away.
+* [ ] Hover over the banner and verify that dots within a ~140px radius grow in size and display a colorful glow centered around the mouse.
+* [ ] Resize the browser window and confirm the canvas scales perfectly without stretching or pixelation, and that the dot grid automatically adapts to fill the new dimensions.
+* [ ] Click "Explore Calendar" and confirm it opens `https://community-calendar.rafv.realtor` in a new tab.
