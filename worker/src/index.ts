@@ -2,6 +2,7 @@ import { Source, NormalizedEvent, SyncResult } from './types';
 import { parseICalFeed } from './parsers/ical';
 import { parseRssFeed } from './parsers/rss';
 import { upsertEvents, updateSourceStatus, Env } from './db';
+import { generateIcalFeed } from './ical-generator';
 
 async function fetchSources(env: Env): Promise<Source[]> {
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/sources?active=eq.true`, {
@@ -103,6 +104,56 @@ export default {
     })());
 
     try {
+      if (url.pathname === '/feed.ics') {
+        const cache = caches.default;
+        const cacheKey = new Request(request.url, {
+          method: 'GET',
+          headers: {
+            'Origin': request.headers.get('Origin') || '*'
+          }
+        });
+
+        let response = await cache.match(cacheKey);
+        if (response) {
+          const newHeaders = new Headers(response.headers);
+          Object.entries(corsHeaders).forEach(([k, v]) => newHeaders.set(k, v));
+          return new Response(response.body, {
+            status: 200,
+            headers: newHeaders
+          });
+        }
+
+        console.log('Cache miss: Fetching events for iCal feed from Supabase...');
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
+
+        const eventsRes = await fetch(`${env.SUPABASE_URL}/rest/v1/events?expired=eq.false&start_datetime=gte.${startDate.toISOString()}&order=start_datetime.asc&limit=500`, {
+          headers: {
+            'apikey': env.SUPABASE_SERVICE_KEY,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`
+          }
+        });
+
+        if (!eventsRes.ok) throw new Error(`Events fetch failed for iCal: ${eventsRes.status}`);
+
+        const events = (await eventsRes.json()) as any;
+        const icalContent = generateIcalFeed(events);
+
+        response = new Response(icalContent, {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/calendar; charset=utf-8',
+            'Content-Disposition': 'inline; filename="community-calendar.ics"',
+            'Cache-Control': 'public, max-age=1800'
+          }
+        });
+
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        return response;
+      }
+
       if (url.pathname === '/events') {
         const cache = caches.default;
         const cacheKey = new Request(request.url, {
