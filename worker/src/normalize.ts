@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon';
+import { NormalizedEvent } from './types';
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   fundraiser: ['gala', 'auction', 'fundraiser', 'fundraising', 'charity', 'benefit'],
@@ -142,4 +143,147 @@ export function normalizeDate(dateInput: string | Date | undefined | null, tzid?
     return dt.toUTC().toISO();
   }
   return null;
+}
+
+export async function aiCategorizeAndEmbed(
+  title: string,
+  description: string,
+  location: string | null,
+  ai: any
+): Promise<{ categories: string[]; embedding: number[] | null }> {
+  let categories: string[] = extractCategories(title + ' ' + description);
+  let embedding: number[] | null = null;
+
+  if (!ai) {
+    return { categories, embedding };
+  }
+
+  // 1. Generate embedding using BGE-small
+  try {
+    const textToEmbed = `Title: ${title}\nDescription: ${description}\nLocation: ${location || 'Unknown'}`;
+    const embedRes = await ai.run('@cf/baai/bge-small-en-v1.5', {
+      text: [textToEmbed]
+    });
+    if (embedRes && embedRes.data && embedRes.data[0]) {
+      embedding = embedRes.data[0];
+    }
+  } catch (err) {
+    console.error('Failed to generate embedding:', err);
+  }
+
+  // 2. Classify categories using LLM
+  try {
+    const prompt = `Classify this calendar event into one or more of these categories: fundraiser, meeting, workshop, family, arts, sports, community, environment, professional, social.
+Return ONLY a JSON array of strings from that list. Do not include markdown, explanation, or extra characters.
+
+Event Title: ${title}
+Event Description: ${description}
+
+Categories JSON Array:`;
+
+    const llmRes = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
+      messages: [
+        { role: 'system', content: 'You are a precise classifier that outputs only valid JSON arrays.' },
+        { role: 'user', content: prompt }
+      ]
+    });
+
+    if (llmRes && llmRes.response) {
+      let rawText = llmRes.response.trim();
+      // Strip markdown code blocks if the model wrapped it
+      if (rawText.startsWith('```')) {
+        rawText = rawText.replace(/^```(json)?\s*/i, '').replace(/\s*```$/, '');
+      }
+      const parsed = JSON.parse(rawText);
+      if (Array.isArray(parsed)) {
+        // Normalize categories and filter to valid ones
+        const validCategories = new Set(Object.keys(CATEGORY_KEYWORDS));
+        const normalized = parsed
+          .map((c: string) => c.toLowerCase().trim())
+          .filter((c: string) => validCategories.has(c));
+        if (normalized.length > 0) {
+          categories = normalized;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to classify categories with AI, falling back to keywords:', err);
+  }
+
+  return { categories, embedding };
+}
+
+export async function aiEnrichEventsBatch(
+  events: NormalizedEvent[],
+  ai: any
+): Promise<NormalizedEvent[]> {
+  if (events.length === 0 || !ai) return events;
+
+  // 1. Batch generate embeddings for all events in one subrequest
+  let embeddings: number[][] = [];
+  try {
+    const texts = events.map(
+      ev => `Title: ${ev.title}\nDescription: ${ev.description || ''}\nLocation: ${ev.location || 'Unknown'}`
+    );
+    const embedRes = await ai.run('@cf/baai/bge-small-en-v1.5', {
+      text: texts
+    });
+    if (embedRes && embedRes.data) {
+      embeddings = embedRes.data;
+    }
+  } catch (err) {
+    console.error('Failed to batch generate embeddings:', err);
+  }
+
+  // 2. Batch categorize events using LLM in a single subrequest to save rate limit/subrequests
+  let categoryMap: Record<string, string[]> = {};
+  try {
+    const eventListString = events.map((ev, i) => `${i}. Title: ${ev.title} | Desc: ${ev.description || ''}`).join('\n');
+    const prompt = `Classify each of the following calendar events into one or more of these categories: fundraiser, meeting, workshop, family, arts, sports, community, environment, professional, social.
+Return ONLY a JSON object where the keys are the event indices (0, 1, 2...) and the values are arrays of matching categories from the list above. Do not include markdown or explanation.
+
+Events to classify:
+${eventListString}
+
+Categories JSON Object:`;
+
+    const llmRes = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
+      messages: [
+        { role: 'system', content: 'You are a precise classifier that outputs only valid JSON objects.' },
+        { role: 'user', content: prompt }
+      ]
+    });
+
+    if (llmRes && llmRes.response) {
+      let rawText = llmRes.response.trim();
+      if (rawText.startsWith('```')) {
+        rawText = rawText.replace(/^```(json)?\s*/i, '').replace(/\s*```$/, '');
+      }
+      categoryMap = JSON.parse(rawText);
+    }
+  } catch (err) {
+    console.error('Failed to batch classify categories with LLM:', err);
+  }
+
+  // 3. Assemble enriched events
+  return events.map((ev, i) => {
+    let categories = ev.categories;
+    if (categoryMap && categoryMap[String(i)] && Array.isArray(categoryMap[String(i)])) {
+      const validCategories = new Set(Object.keys(CATEGORY_KEYWORDS));
+      const parsedCats = categoryMap[String(i)]
+        .map((c: string) => c.toLowerCase().trim())
+        .filter((c: string) => validCategories.has(c));
+      if (parsedCats.length > 0) {
+        categories = parsedCats;
+      }
+    } else {
+      categories = extractCategories(ev.title + ' ' + (ev.description || ''));
+    }
+
+    return {
+      ...ev,
+      categories: categories.length > 0 ? categories : ev.categories,
+      embedding: embeddings[i] || null
+    };
+  });
 }

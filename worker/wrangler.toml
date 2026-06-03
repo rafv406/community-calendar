@@ -11,3 +11,6 @@ SYNC_INTERVAL_MINUTES = "30"
 MAX_EVENTS_LOOKAHEAD_DAYS = "365"
 DEDUP_EXPIRY_DAYS = "7"
 ALERT_EMAIL_TO = "coordinator@rafv.org"
+
+[ai]
+binding = "AI"

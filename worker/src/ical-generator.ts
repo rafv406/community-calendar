@@ -112,7 +112,8 @@ export function generateIcalFeed(events: DbEventRecord[]): string {
       lines.push(`DTEND:${formatIcalDate(endStr)}`);
     }
 
-    lines.push(foldLine(`SUMMARY:${escapeText(ev.title)}`));
+    const displayTitle = ev.source_name ? `[${ev.source_name}] ${ev.title}` : ev.title;
+    lines.push(foldLine(`SUMMARY:${escapeText(displayTitle)}`));
 
     // Prepare Description
     let descriptionText = ev.description || '';

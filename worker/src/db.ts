@@ -3,6 +3,7 @@ import { NormalizedEvent } from './types';
 export interface Env {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_KEY: string;
+  AI: any;
 }
 
 export async function upsertEvents(events: NormalizedEvent[], env: Env) {

@@ -30,6 +30,7 @@ export interface NormalizedEvent {
   categories: string[]           // Lowercase strings. Empty array if none.
   raw_uid: string | null         // Original UID from feed or null.
   fingerprint: string            // SHA-256 — see dedupe.ts.
+  embedding?: number[] | null    // AI generated vector embedding
 }
 
 export interface SyncResult {

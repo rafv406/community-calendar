@@ -11,10 +11,12 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/react": "^3.0.197",
     "@google/genai": "^1.29.0",
     "@supabase/supabase-js": "^2.99.3",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
+    "ai": "^6.0.195",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",

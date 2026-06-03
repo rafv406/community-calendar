@@ -6,8 +6,9 @@ import { Logo } from '../components/Logo';
 import { Footer } from '../components/Footer';
 import { HeaderHorizon } from '../components/HeaderHorizon';
 import { CarouselVignette } from '../components/CarouselVignette';
-import { ChevronLeft, ChevronRight, Search, Calendar, MapPin, Filter, Clock, Copy, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Calendar, MapPin, Filter, Clock, Copy, Check, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { CalendarChatbot } from '../components/CalendarChatbot';
 
 const ICAL_URL = 'https://community-calendar.rafv.realtor/feed.ics';
 
@@ -240,7 +241,8 @@ const BrowseEvents = ({
   searchQuery,
   setSearchQuery,
   activeCategories,
-  onCategoryToggle
+  onCategoryToggle,
+  searchingSemantic
 }: { 
   events: any[], 
   sources: SourceRecord[], 
@@ -249,7 +251,8 @@ const BrowseEvents = ({
   searchQuery: string,
   setSearchQuery: (q: string) => void,
   activeCategories: Set<string>,
-  onCategoryToggle: (cat: string) => void
+  onCategoryToggle: (cat: string) => void,
+  searchingSemantic: boolean
 }) => {
   const orgs = useMemo(() => {
     return sources.map(source => {
@@ -456,8 +459,20 @@ const BrowseEvents = ({
 
       {/* ── SEARCH + TOOLS BAR ── */}
       <div className="search-tools-bar">
+        <style>{`
+          @keyframes calendar-spin {
+            to { transform: rotate(360deg); }
+          }
+          .semantic-search-spinner {
+            animation: calendar-spin 0.8s linear infinite;
+          }
+        `}</style>
         <div className="search-input-wrap">
-          <Search className="search-input-icon" />
+          {searchingSemantic ? (
+            <Loader2 className="search-input-icon semantic-search-spinner" />
+          ) : (
+            <Search className="search-input-icon" />
+          )}
           <input
             className="search-input"
             type="text"
@@ -740,6 +755,51 @@ export const CalendarView = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set());
+  const [semanticEvents, setSemanticEvents] = useState<any[] | null>(null);
+  const [searchingSemantic, setSearchingSemantic] = useState(false);
+
+  // Debounced semantic search fetching from the Cloudflare Worker search endpoint
+  useEffect(() => {
+    const qClean = searchQuery.trim().toLowerCase();
+    if (!qClean) {
+      setSemanticEvents(null);
+      return;
+    }
+
+    // Direct month or year search bypasses semantic vector lookup to show all matches
+    const isMonthQuery = [
+      'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
+      'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+    ].includes(qClean);
+    const isYearQuery = /^\d{4}$/.test(qClean);
+
+    if (isMonthQuery || isYearQuery) {
+      setSemanticEvents(null); // Bypass semantic vector search to trigger exact local filter
+      return;
+    }
+
+    const workerApiUrl = import.meta.env.VITE_WORKER_API_URL || 'http://localhost:8787';
+    const delayDebounce = setTimeout(async () => {
+      try {
+        setSearchingSemantic(true);
+        const res = await fetch(`${workerApiUrl}/search?q=${encodeURIComponent(searchQuery)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSemanticEvents(data);
+        } else {
+          console.warn('Semantic search failed, falling back to client substring matching.');
+          setSemanticEvents(null);
+        }
+      } catch (err) {
+        console.error('Error running semantic search:', err);
+        setSemanticEvents(null);
+      } finally {
+        setSearchingSemantic(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
 
   // Restore state from URL on mount
   useEffect(() => {
@@ -796,12 +856,27 @@ export const CalendarView = () => {
     
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(ev =>
-        ev.title.toLowerCase().includes(q) ||
-        (ev.description && ev.description.toLowerCase().includes(q)) ||
-        (ev.location && ev.location.toLowerCase().includes(q)) ||
-        ev.source_name.toLowerCase().includes(q)
-      );
+      
+      // If we have semantic search results from the worker, use them
+      if (semanticEvents !== null && semanticEvents.length > 0) {
+        filtered = semanticEvents;
+      } else {
+        // Otherwise, fall back to exact keyword & date substring matching
+        filtered = events.filter(ev => {
+          const titleMatch = ev.title.toLowerCase().includes(q);
+          const descMatch = ev.description && ev.description.toLowerCase().includes(q);
+          const locMatch = ev.location && ev.location.toLowerCase().includes(q);
+          const srcMatch = ev.source_name.toLowerCase().includes(q);
+          
+          // Match month name of the event
+          const dateObj = new Date(ev.start_datetime);
+          const monthLong = dateObj.toLocaleString('default', { month: 'long' }).toLowerCase();
+          const monthShort = dateObj.toLocaleString('default', { month: 'short' }).toLowerCase();
+          const dateMatch = monthLong.includes(q) || monthShort.includes(q);
+          
+          return titleMatch || descMatch || locMatch || srcMatch || dateMatch;
+        });
+      }
     }
 
     if (activeCategories.size > 0) {
@@ -834,7 +909,7 @@ export const CalendarView = () => {
         rawEvent: ev 
       };
     });
-  }, [events, sourcesMap, searchQuery, activeCategories]);
+  }, [events, semanticEvents, sourcesMap, searchQuery, activeCategories]);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
@@ -937,6 +1012,7 @@ export const CalendarView = () => {
             setSearchQuery('');
             setActiveCategories(new Set());
           }}
+          searchingSemantic={searchingSemantic}
         />
       </div>
 
@@ -948,6 +1024,7 @@ export const CalendarView = () => {
           onClose={closeEvent}
         />
       )}
+      <CalendarChatbot />
       <Footer />
     </>
   );
