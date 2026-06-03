@@ -236,14 +236,15 @@ Output a JSON object matching this schema:
     "end": "YYYY-MM-DDT23:59:59.999Z" or null // Only set if a specific end timeframe is requested (like "this weekend" or "this month"). For generic "upcoming" queries, set to null.
   },
   "constraints": {
-    "category": string or null, // Filter category if explicitly requested (e.g. "fundraiser", "meeting", "workshop", "family", "arts", "sports", "community", "environment", "professional", "social")
+    "category": "fundraiser" | "meeting" | "workshop" | "family" | "arts" | "community" | "professional" | "social" | "technology" | "ai" | null, // The category must strictly be null OR exactly one of these allowed values. If the user asks about any category or topic that is not in this list (such as "volunteer", "contracts", "ethics"), set category to null and place the term in "semantic_query" instead.
     "after_time": "HH:MM" or null // E.g. "17:00" if they ask for events after 5pm, otherwise null
   },
-  "semantic_query": string or null // The topic/keywords to search for (e.g. "ethics", "contracts"). Exclude date and time constraint phrases. Set to null for pure structured queries.
+  "semantic_query": string or null // The topic/keywords to search for (e.g. "ethics", "contracts", "volunteer"). Exclude date and time constraint phrases. Set to null for pure structured queries.
 }
 
 Rules:
 - For generic queries like "what events are coming up?" or "what's happening?", set query_type to "structured", time_filter to {"type": "none", "start": "today's timestamp at 00:00:00.000Z", "end": null}. Do NOT guess or set an end date unless explicitly restricted (e.g., "this week").
+- The "category" field MUST ONLY contain one of the exact allowed values: fundraiser, meeting, workshop, family, arts, community, professional, social, technology, ai. Do not set "category" to custom words like "volunteer". Instead, put "volunteer" in "semantic_query" and classify query_type as "semantic" or "hybrid".
 
 Examples:
 - "What events are coming up?" -> {"query_type": "structured", "time_filter": {"type": "none", "start": "today's date at 00:00:00.000Z", "end": null}, "constraints": {"category": null, "after_time": null}, "semantic_query": null}

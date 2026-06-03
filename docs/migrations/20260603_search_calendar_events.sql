@@ -26,7 +26,9 @@ BEGIN
     AND (filter_after_time IS NULL OR (e.start_datetime::time) >= filter_after_time)
     -- Embedding Match Filter (only if embedding is provided)
     AND (query_embedding IS NULL OR (e.embedding <=> query_embedding < 1 - match_threshold))
-  ORDER BY e.start_datetime ASC
+  ORDER BY 
+    CASE WHEN query_embedding IS NULL THEN 0.0 ELSE (e.embedding <=> query_embedding) END ASC,
+    e.start_datetime ASC
   LIMIT match_count;
 END;
 $$;

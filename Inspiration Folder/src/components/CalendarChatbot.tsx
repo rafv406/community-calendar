@@ -48,31 +48,55 @@ function formatMessageContent(content: string, isUser: boolean) {
   };
 
   const lines = content.split('\n');
-  return (
-    <>
-      {lines.map((line, idx) => {
-        const trimmed = line.trim();
-        if (trimmed === '') {
-          return null;
-        }
-        
-        if (trimmed.startsWith('* ') || trimmed.startsWith('- ') || trimmed.startsWith('+ ')) {
-          const listText = trimmed.substring(2);
-          return (
-            <ul key={idx} style={{ margin: '5px 0 10px 0', paddingLeft: '20px' }}>
-              <li>{parseInline(listText)}</li>
-            </ul>
-          );
-        }
+  const elements: React.ReactNode[] = [];
+  let currentList: React.ReactNode[] = [];
+  let listKey = 0;
 
-        if (trimmed === '---') {
-          return <hr key={idx} style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)', margin: '12px 0' }} />;
-        }
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (trimmed === '') {
+      if (currentList.length > 0) {
+        elements.push(
+          <ul key={`list-${listKey++}`} style={{ margin: '4px 0 8px 0', paddingLeft: '20px' }}>
+            {currentList}
+          </ul>
+        );
+        currentList = [];
+      }
+      continue;
+    }
 
-        return <p key={idx} style={{ margin: '0 0 8px 0' }}>{parseInline(line)}</p>;
-      })}
-    </>
-  );
+    if (trimmed.startsWith('* ') || trimmed.startsWith('- ') || trimmed.startsWith('+ ')) {
+      const listText = trimmed.substring(2);
+      currentList.push(<li key={i} style={{ marginBottom: '4px' }}>{parseInline(listText)}</li>);
+    } else {
+      if (currentList.length > 0) {
+        elements.push(
+          <ul key={`list-${listKey++}`} style={{ margin: '4px 0 8px 0', paddingLeft: '20px' }}>
+            {currentList}
+          </ul>
+        );
+        currentList = [];
+      }
+
+      if (trimmed === '---') {
+        elements.push(<hr key={i} style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)', margin: '10px 0' }} />);
+      } else {
+        elements.push(<p key={i} style={{ margin: '0 0 6px 0' }}>{parseInline(line)}</p>);
+      }
+    }
+  }
+
+  if (currentList.length > 0) {
+    elements.push(
+      <ul key={`list-${listKey++}`} style={{ margin: '4px 0 8px 0', paddingLeft: '20px' }}>
+        {currentList}
+      </ul>
+    );
+  }
+
+  return <>{elements}</>;
 }
 
 export function CalendarChatbot() {
@@ -638,16 +662,19 @@ export function CalendarChatbot() {
           
           {/* Messages */}
           <div id="rafv-messages">
-            {messages.map((msg) => {
-              const isUser = msg.role === 'user';
-              return (
-                <div key={msg.id} className={`message ${isUser ? 'user' : 'bot'}`}>
-                  {formatMessageContent(msg.content, isUser)}
-                </div>
+             {messages.map((msg) => {
+               if (msg.role === 'assistant' && msg.content.trim() === '') {
+                 return null;
+               }
+               const isUser = msg.role === 'user';
+               return (
+                 <div key={msg.id} className={`message ${isUser ? 'user' : 'bot'}`}>
+                   {formatMessageContent(msg.content, isUser)}
+                 </div>
               );
             })}
             
-            {isLoading && messages[messages.length - 1]?.content === '' && (
+            {isLoading && (messages[messages.length - 1]?.content ?? '').trim() === '' && (
               <div className="message bot" id="typing">
                 <div className="typing">
                   <div className="dot"></div>
