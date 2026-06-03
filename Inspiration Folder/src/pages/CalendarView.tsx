@@ -778,7 +778,7 @@ export const CalendarView = () => {
       return;
     }
 
-    const workerApiUrl = import.meta.env.VITE_WORKER_API_URL || 'http://localhost:8787';
+    const workerApiUrl = import.meta.env.VITE_WORKER_API_URL || 'https://community-calendar-worker.rafvvids.workers.dev';
     const delayDebounce = setTimeout(async () => {
       try {
         setSearchingSemantic(true);

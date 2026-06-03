@@ -52,6 +52,9 @@ function formatMessageContent(content: string, isUser: boolean) {
     <>
       {lines.map((line, idx) => {
         const trimmed = line.trim();
+        if (trimmed === '') {
+          return null;
+        }
         
         if (trimmed.startsWith('* ') || trimmed.startsWith('- ') || trimmed.startsWith('+ ')) {
           const listText = trimmed.substring(2);
@@ -88,7 +91,7 @@ export function CalendarChatbot() {
   const [rippling, setRippling] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const workerApiUrl = import.meta.env.VITE_WORKER_API_URL || 'http://localhost:8787';
+  const workerApiUrl = import.meta.env.VITE_WORKER_API_URL || 'https://community-calendar-worker.rafvvids.workers.dev';
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -644,7 +647,7 @@ export function CalendarChatbot() {
               );
             })}
             
-            {isLoading && (
+            {isLoading && messages[messages.length - 1]?.content === '' && (
               <div className="message bot" id="typing">
                 <div className="typing">
                   <div className="dot"></div>
