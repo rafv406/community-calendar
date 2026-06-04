@@ -294,11 +294,14 @@ Output a JSON object matching this schema:
     "end": "YYYY-MM-DDT23:59:59.999Z" or null
   },
   "constraints": {
-    "category": "fundraiser" | "meeting" | "workshop" | "family" | "arts" | "community" | "professional" | "social" | "technology" | "ai" | null,
+    "category": "fundraiser" | "meeting" | "workshop" | "family" | "arts" | "sports" | "community" | "environment" | "professional" | "social" | null,
     "after_time": "HH:MM" or null
   },
   "semantic_query": string or null
 }
+
+Rules:
+- The category parameter must strictly be null OR exactly one of the allowed categories listed in the schema. Do NOT classify general topics like "ai", "marketing", "contracts", or "volunteer" as the category. Place those terms in "semantic_query" instead.
 
 Latest User Message: ${userQuery}
 
