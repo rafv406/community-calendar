@@ -3,6 +3,8 @@ import { NormalizedEvent } from './types';
 export interface Env {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_KEY: string;
+  OPENAI_API_KEY: string;
+  TURNSTILE_SECRET_KEY?: string;
   AI: any;
 }
 

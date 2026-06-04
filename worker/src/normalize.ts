@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import { NormalizedEvent } from './types';
+import { getOpenAiEmbedding, getOpenAiEmbeddingBatch, callOpenAiChat } from './openai';
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   fundraiser: ['gala', 'auction', 'fundraiser', 'fundraising', 'charity', 'benefit'],
@@ -149,29 +150,24 @@ export async function aiCategorizeAndEmbed(
   title: string,
   description: string,
   location: string | null,
-  ai: any
+  openaiApiKey?: string
 ): Promise<{ categories: string[]; embedding: number[] | null }> {
   let categories: string[] = extractCategories(title + ' ' + description);
   let embedding: number[] | null = null;
 
-  if (!ai) {
+  if (!openaiApiKey) {
     return { categories, embedding };
   }
 
-  // 1. Generate embedding using BGE-small
+  // 1. Generate embedding using OpenAI
   try {
     const textToEmbed = `Title: ${title}\nDescription: ${description}\nLocation: ${location || 'Unknown'}`;
-    const embedRes = await ai.run('@cf/baai/bge-small-en-v1.5', {
-      text: [textToEmbed]
-    });
-    if (embedRes && embedRes.data && embedRes.data[0]) {
-      embedding = embedRes.data[0];
-    }
+    embedding = await getOpenAiEmbedding(textToEmbed, openaiApiKey);
   } catch (err) {
     console.error('Failed to generate embedding:', err);
   }
 
-  // 2. Classify categories using LLM
+  // 2. Classify categories using OpenAI
   try {
     const prompt = `Classify this calendar event into one or more of these categories: fundraiser, meeting, workshop, family, arts, sports, community, environment, professional, social.
 Return ONLY a JSON array of strings from that list. Do not include markdown, explanation, or extra characters.
@@ -181,20 +177,17 @@ Event Description: ${description}
 
 Categories JSON Array:`;
 
-    const llmRes = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
-      messages: [
-        { role: 'system', content: 'You are a precise classifier that outputs only valid JSON arrays.' },
-        { role: 'user', content: prompt }
-      ]
-    });
+    const rawText = await callOpenAiChat([
+      { role: 'system', content: 'You are a precise classifier that outputs only valid JSON arrays.' },
+      { role: 'user', content: prompt }
+    ], openaiApiKey);
 
-    if (llmRes && llmRes.response) {
-      let rawText = llmRes.response.trim();
-      // Strip markdown code blocks if the model wrapped it
-      if (rawText.startsWith('```')) {
-        rawText = rawText.replace(/^```(json)?\s*/i, '').replace(/\s*```$/, '');
+    if (rawText) {
+      let cleanedText = rawText.trim();
+      if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```(json)?\s*/i, '').replace(/\s*```$/, '');
       }
-      const parsed = JSON.parse(rawText);
+      const parsed = JSON.parse(cleanedText);
       if (Array.isArray(parsed)) {
         // Normalize categories and filter to valid ones
         const validCategories = new Set(Object.keys(CATEGORY_KEYWORDS));
@@ -215,27 +208,22 @@ Categories JSON Array:`;
 
 export async function aiEnrichEventsBatch(
   events: NormalizedEvent[],
-  ai: any
+  openaiApiKey?: string
 ): Promise<NormalizedEvent[]> {
-  if (events.length === 0 || !ai) return events;
+  if (events.length === 0 || !openaiApiKey) return events;
 
-  // 1. Batch generate embeddings for all events in one subrequest
+  // 1. Batch generate embeddings for all events
   let embeddings: number[][] = [];
   try {
     const texts = events.map(
       ev => `Title: ${ev.title}\nDescription: ${ev.description || ''}\nLocation: ${ev.location || 'Unknown'}`
     );
-    const embedRes = await ai.run('@cf/baai/bge-small-en-v1.5', {
-      text: texts
-    });
-    if (embedRes && embedRes.data) {
-      embeddings = embedRes.data;
-    }
+    embeddings = await getOpenAiEmbeddingBatch(texts, openaiApiKey);
   } catch (err) {
     console.error('Failed to batch generate embeddings:', err);
   }
 
-  // 2. Batch categorize events using LLM in a single subrequest to save rate limit/subrequests
+  // 2. Batch categorize events using OpenAI in a single request
   let categoryMap: Record<string, string[]> = {};
   try {
     const eventListString = events.map((ev, i) => `${i}. Title: ${ev.title} | Desc: ${ev.description || ''}`).join('\n');
@@ -247,19 +235,17 @@ ${eventListString}
 
 Categories JSON Object:`;
 
-    const llmRes = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
-      messages: [
-        { role: 'system', content: 'You are a precise classifier that outputs only valid JSON objects.' },
-        { role: 'user', content: prompt }
-      ]
-    });
+    const rawText = await callOpenAiChat([
+      { role: 'system', content: 'You are a precise classifier that outputs only valid JSON objects.' },
+      { role: 'user', content: prompt }
+    ], openaiApiKey);
 
-    if (llmRes && llmRes.response) {
-      let rawText = llmRes.response.trim();
-      if (rawText.startsWith('```')) {
-        rawText = rawText.replace(/^```(json)?\s*/i, '').replace(/\s*```$/, '');
+    if (rawText) {
+      let cleanedText = rawText.trim();
+      if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```(json)?\s*/i, '').replace(/\s*```$/, '');
       }
-      categoryMap = JSON.parse(rawText);
+      categoryMap = JSON.parse(cleanedText);
     }
   } catch (err) {
     console.error('Failed to batch classify categories with LLM:', err);

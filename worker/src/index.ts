@@ -4,6 +4,7 @@ import { parseRssFeed } from './parsers/rss';
 import { upsertEvents, updateSourceStatus, expireStaleEvents, Env } from './db';
 import { generateIcalFeed } from './ical-generator';
 import { aiCategorizeAndEmbed, aiEnrichEventsBatch } from './normalize';
+import { getOpenAiEmbedding, callOpenAiChat, streamOpenAiChat } from './openai';
 
 async function fetchSources(env: Env): Promise<Source[]> {
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/sources?active=eq.true`, {
@@ -37,7 +38,7 @@ async function syncSource(source: Source, env: Env): Promise<SyncResult> {
       // Process events through AI categorization and embeddings using batching
       let aiEvents: NormalizedEvent[] = uniqueEvents;
       try {
-        aiEvents = await aiEnrichEventsBatch(uniqueEvents, env.AI);
+        aiEvents = await aiEnrichEventsBatch(uniqueEvents, env.OPENAI_API_KEY);
       } catch (aiErr) {
         console.error('AI Batched Enrichment failed, using raw events:', aiErr);
       }
@@ -76,11 +77,52 @@ async function syncSource(source: Source, env: Env): Promise<SyncResult> {
   };
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+];
+
+function getCorsHeaders(request: Request) {
+  const origin = request.headers.get('Origin') || '';
+  const isAllowed = ALLOWED_ORIGINS.includes(origin) || 
+                    origin.endsWith('.rafv.org') || 
+                    origin.startsWith('http://localhost:') || 
+                    origin.startsWith('http://127.0.0.1:') ||
+                    origin.endsWith('.workers.dev') ||
+                    origin.endsWith('.pages.dev');
+
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'http://localhost:5173',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400',
+  };
+}
+
+async function verifyTurnstile(token: string, secretKey: string, ip?: string): Promise<boolean> {
+  if (!token) return false;
+  
+  const formData = new FormData();
+  formData.append('secret', secretKey);
+  formData.append('response', token);
+  if (ip) {
+    formData.append('remoteip', ip);
+  }
+
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) return false;
+    const outcome = (await res.json()) as { success: boolean };
+    return outcome.success;
+  } catch (err) {
+    console.error('Turnstile verification request failed:', err);
+    return false;
+  }
+}
 
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
@@ -108,6 +150,7 @@ export default {
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    const corsHeaders = getCorsHeaders(request);
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
     }
@@ -176,7 +219,7 @@ export default {
 
       if (url.pathname === '/chat' && request.method === 'POST') {
         try {
-          const { messages } = (await request.json()) as { messages: any[] };
+          const { messages, turnstileToken } = (await request.json()) as { messages: any[]; turnstileToken?: string };
           if (!messages || !Array.isArray(messages) || messages.length === 0) {
             return new Response(JSON.stringify({ error: 'Missing or empty messages array' }), {
               status: 400,
@@ -184,10 +227,26 @@ export default {
             });
           }
 
+          // Turnstile Validation (skip if TURNSTILE_SECRET_KEY is not configured)
+          if (env.TURNSTILE_SECRET_KEY) {
+            const clientIp = request.headers.get('CF-Connecting-IP') || undefined;
+            const isValid = await verifyTurnstile(turnstileToken || '', env.TURNSTILE_SECRET_KEY, clientIp);
+            if (!isValid) {
+              return new Response(JSON.stringify({ error: 'Failed bot validation (Turnstile)' }), {
+                status: 403,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            }
+          }
+
+          if (!env.OPENAI_API_KEY) {
+            throw new Error('OPENAI_API_KEY is not configured on the server.');
+          }
+
           const lastMessage = messages[messages.length - 1];
           const userQuery = lastMessage.content;
 
-          // 1. Structured intent analysis using LLM
+          // 1. Structured intent analysis using OpenAI LLM
           interface SearchPlan {
             query_type: 'structured' | 'semantic' | 'hybrid';
             time_filter: {
@@ -209,22 +268,21 @@ export default {
             semantic_query: userQuery
           };
 
-          if (env.AI) {
-            try {
-              const now = new Date();
-              const formatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'America/Chicago',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                weekday: 'long',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-              });
-              const localDateStr = formatter.format(now);
+          try {
+            const now = new Date();
+            const formatter = new Intl.DateTimeFormat('en-US', {
+              timeZone: 'America/Chicago',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              weekday: 'long',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            });
+            const localDateStr = formatter.format(now);
 
-              const plannerPrompt = `Analyze the conversation history and the latest user message. Create a structured search query plan to find calendar events.
+            const plannerPrompt = `Analyze the conversation history and the latest user message. Create a structured search query plan to find calendar events.
 Today's local date/time is: ${localDateStr} (timezone: America/Chicago).
 
 Output a JSON object matching this schema:
@@ -232,54 +290,39 @@ Output a JSON object matching this schema:
   "query_type": "structured" | "semantic" | "hybrid",
   "time_filter": {
     "type": "relative" | "absolute" | "none",
-    "start": "YYYY-MM-DDT00:00:00.000Z" or null, // Resolve relative times like "tomorrow" or "this weekend" relative to today. For generic "upcoming" queries (without a specific timeframe), set start to today's date at 00:00:00.000Z.
-    "end": "YYYY-MM-DDT23:59:59.999Z" or null // Only set if a specific end timeframe is requested (like "this weekend" or "this month"). For generic "upcoming" queries, set to null.
+    "start": "YYYY-MM-DDT00:00:00.000Z" or null,
+    "end": "YYYY-MM-DDT23:59:59.999Z" or null
   },
   "constraints": {
-    "category": "fundraiser" | "meeting" | "workshop" | "family" | "arts" | "community" | "professional" | "social" | "technology" | "ai" | null, // The category must strictly be null OR exactly one of these allowed values. If the user asks about any category or topic that is not in this list (such as "volunteer", "contracts", "ethics"), set category to null and place the term in "semantic_query" instead.
-    "after_time": "HH:MM" or null // E.g. "17:00" if they ask for events after 5pm, otherwise null
+    "category": "fundraiser" | "meeting" | "workshop" | "family" | "arts" | "community" | "professional" | "social" | "technology" | "ai" | null,
+    "after_time": "HH:MM" or null
   },
-  "semantic_query": string or null // The topic/keywords to search for (e.g. "ethics", "contracts", "volunteer"). Exclude date and time constraint phrases. Set to null for pure structured queries.
+  "semantic_query": string or null
 }
-
-Rules:
-- For generic queries like "what events are coming up?" or "what's happening?", set query_type to "structured", time_filter to {"type": "none", "start": "today's timestamp at 00:00:00.000Z", "end": null}. Do NOT guess or set an end date unless explicitly restricted (e.g., "this week").
-- The "category" field MUST ONLY contain one of the exact allowed values: fundraiser, meeting, workshop, family, arts, community, professional, social, technology, ai. Do not set "category" to custom words like "volunteer". Instead, put "volunteer" in "semantic_query" and classify query_type as "semantic" or "hybrid".
-
-Examples:
-- "What events are coming up?" -> {"query_type": "structured", "time_filter": {"type": "none", "start": "today's date at 00:00:00.000Z", "end": null}, "constraints": {"category": null, "after_time": null}, "semantic_query": null}
-- "What's happening this weekend?" -> {"query_type": "structured", "time_filter": {"type": "relative", "start": "upcoming Saturday timestamp", "end": "upcoming Sunday timestamp"}, "constraints": {"category": null, "after_time": null}, "semantic_query": null}
-- "ethics and contract rules" -> {"query_type": "semantic", "time_filter": {"type": "none", "start": null, "end": null}, "constraints": {"category": null, "after_time": null}, "semantic_query": "ethics contracts"}
-- "Show networking events this month" -> {"query_type": "hybrid", "time_filter": {"type": "relative", "start": "start of month", "end": "end of month"}, "constraints": {"category": "professional", "after_time": null}, "semantic_query": "networking"}
-
-Do not write explanations, markdown syntax, or formatting—output ONLY the raw JSON string.
-
-Conversation History:
-${messages.slice(0, -1).map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n')}
 
 Latest User Message: ${userQuery}
 
 JSON Query Plan:`;
 
-              const plannerRes = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-                prompt: plannerPrompt
-              });
+            const rawText = await callOpenAiChat([
+              { role: 'system', content: 'You are a precise search planner that outputs only raw JSON strings.' },
+              { role: 'user', content: plannerPrompt }
+            ], env.OPENAI_API_KEY);
 
-              if (plannerRes && plannerRes.response) {
-                let rawText = plannerRes.response.trim();
-                if (rawText.startsWith('```')) {
-                  rawText = rawText.replace(/^```(json)?\s*/i, '').replace(/\s*```$/, '');
-                }
-                try {
-                  const parsed = JSON.parse(rawText);
-                  plan = { ...plan, ...parsed };
-                } catch (e) {
-                  console.error('Failed to parse LLM search plan:', rawText, e);
-                }
+            if (rawText) {
+              let cleanedText = rawText.trim();
+              if (cleanedText.startsWith('```')) {
+                cleanedText = cleanedText.replace(/^```(json)?\s*/i, '').replace(/\s*```$/, '');
               }
-            } catch (plannerErr) {
-              console.error('Failed to run query planner:', plannerErr);
+              try {
+                const parsed = JSON.parse(cleanedText);
+                plan = { ...plan, ...parsed };
+              } catch (e) {
+                console.error('Failed to parse OpenAI search plan:', cleanedText, e);
+              }
             }
+          } catch (plannerErr) {
+            console.error('Failed to run OpenAI query planner:', plannerErr);
           }
 
           console.log(`QUERY PLAN: ${JSON.stringify(plan)}`);
@@ -288,16 +331,11 @@ JSON Query Plan:`;
           let contextText = 'No upcoming matching events found.';
           try {
             let queryEmbedding: number[] | null = null;
-            if (env.AI && plan.query_type !== 'structured' && plan.semantic_query) {
+            if (plan.query_type !== 'structured' && plan.semantic_query) {
               try {
-                const embedRes = await env.AI.run('@cf/baai/bge-small-en-v1.5', {
-                  text: [plan.semantic_query]
-                });
-                if (embedRes && embedRes.data && embedRes.data[0]) {
-                  queryEmbedding = embedRes.data[0];
-                }
+                queryEmbedding = await getOpenAiEmbedding(plan.semantic_query, env.OPENAI_API_KEY);
               } catch (embedErr) {
-                console.error('Failed to generate search query embedding:', embedErr);
+                console.error('Failed to generate OpenAI search query embedding:', embedErr);
               }
             }
 
@@ -312,7 +350,6 @@ JSON Query Plan:`;
               filter_after_time: plan.constraints?.after_time ? `${plan.constraints.after_time}:00` : null
             };
 
-            console.log(`Chatbot: Executing search RPC: ${JSON.stringify(rpcParams)}`);
             const supabaseRes = await fetch(rpcUrl, {
               method: 'POST',
               headers: {
@@ -325,18 +362,18 @@ JSON Query Plan:`;
 
             if (supabaseRes && supabaseRes.ok) {
               const matchedEvents = (await supabaseRes.json()) as any[];
-                if (matchedEvents.length > 0) {
-                  contextText = matchedEvents.map((ev, idx) => {
-                    const dateStr = new Date(ev.start_datetime).toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      timeZone: 'America/Chicago'
-                    });
-                    return `Event #${idx + 1}:
+              if (matchedEvents.length > 0) {
+                contextText = matchedEvents.map((ev, idx) => {
+                  const dateStr = new Date(ev.start_datetime).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'America/Chicago'
+                  });
+                  return `Event #${idx + 1}:
 Title: ${ev.title}
 Organization: ${ev.source_name}
 Date/Time: ${dateStr} ${ev.all_day ? '(All Day)' : ''}
@@ -344,28 +381,19 @@ Location: ${ev.location || 'Not Specified'}
 Description: ${ev.description || 'No description provided.'}
 Url: ${ev.url || 'Not available'}
 ---`;
-                  }).join('\n\n');
-                }
+                }).join('\n\n');
               }
-            } catch (dbErr) {
-              console.error('Failed to fetch event context for chatbot:', dbErr);
             }
+          } catch (dbErr) {
+            console.error('Failed to fetch event context for chatbot:', dbErr);
+          }
 
-          // 4. Construct System Prompt & Call streaming LLM
-          const systemPrompt = `You are the RAFV Calendar Assistant, a helpful AI chatbot for the Realtors Association of the Fox Valley Community Calendar.
-Your primary role is to answer questions about events, classes, meetings, and activities in the Fox Valley area.
-
-Use the following retrieved events context to answer the user's question. If the events context is empty, state that you couldn't find matching events.
+          // 4. Construct System Prompt & Call streaming OpenAI LLM
+          const systemPrompt = `You are the RAFV Calendar Assistant. Use the following retrieved events context to answer the user's question. If the events context is empty, state that you couldn't find matching events.
 Format your answer clearly, using bullet points for multiple events. Always include dates, times, host organizations, and URLs (if available) for the events. Make sure URLs are output as clickable Markdown links, e.g. [Event Details](url).
 
 Context (Retrieved Events):
-${contextText}
-
-Instructions:
-- Be polite, professional, and concise.
-- Base your answers ONLY on the retrieved events. Do not invent details.
-- If the user asks about an event not in the context, politely state you don't have information about it.
-- Keep answers formatted in clean markdown.`;
+${contextText}`;
 
           const llmMessages = [
             { role: 'system', content: systemPrompt },
@@ -375,62 +403,9 @@ Instructions:
             }))
           ];
 
-          const chatStream = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-            messages: llmMessages,
-            stream: true
-          });
+          const chatStream = await streamOpenAiChat(llmMessages, env.OPENAI_API_KEY);
 
-          // Translate Cloudflare's data: {"response": "..."} format to raw text stream
-          const { readable, writable } = new TransformStream();
-          const writer = writable.getWriter();
-          const reader = chatStream.getReader();
-          const encoder = new TextEncoder();
-          const decoder = new TextDecoder();
-          let buffer = '';
-
-          ctx.waitUntil((async () => {
-            try {
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                  const cleaned = line.trim();
-                  if (cleaned.startsWith('data:')) {
-                    const dataStr = cleaned.slice(5).trim();
-                    if (dataStr === '[DONE]') continue;
-                    try {
-                      const parsed = JSON.parse(dataStr);
-                      if (parsed.response) {
-                        await writer.write(encoder.encode(parsed.response));
-                      }
-                    } catch (e) {}
-                  }
-                }
-              }
-              if (buffer.trim().startsWith('data:')) {
-                const dataStr = buffer.trim().slice(5).trim();
-                if (dataStr !== '[DONE]') {
-                  try {
-                    const parsed = JSON.parse(dataStr);
-                    if (parsed.response) {
-                      await writer.write(encoder.encode(parsed.response));
-                    }
-                  } catch (e) {}
-                }
-              }
-            } catch (e) {
-              console.error('Error while processing chat stream:', e);
-            } finally {
-              await writer.close();
-            }
-          })());
-
-          return new Response(readable, {
+          return new Response(chatStream, {
             headers: {
               ...corsHeaders,
               'Content-Type': 'text/plain; charset=utf-8',
@@ -458,16 +433,11 @@ Instructions:
 
         console.log(`Semantic Search Query: ${query}`);
         let embedding: number[] | null = null;
-        if (env.AI) {
+        if (env.OPENAI_API_KEY) {
           try {
-            const embedRes = await env.AI.run('@cf/baai/bge-small-en-v1.5', {
-              text: [query]
-            });
-            if (embedRes && embedRes.data && embedRes.data[0]) {
-              embedding = embedRes.data[0];
-            }
+            embedding = await getOpenAiEmbedding(query, env.OPENAI_API_KEY);
           } catch (err) {
-            console.error('Failed to generate search query embedding:', err);
+            console.error('Failed to generate search query embedding via OpenAI:', err);
           }
         }
 
