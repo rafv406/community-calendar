@@ -87,6 +87,7 @@ function getCorsHeaders(request: Request) {
   const origin = request.headers.get('Origin') || '';
   const isAllowed = ALLOWED_ORIGINS.includes(origin) || 
                     origin.endsWith('.rafv.org') || 
+                    origin.endsWith('.rafv.realtor') || 
                     origin.startsWith('http://localhost:') || 
                     origin.startsWith('http://127.0.0.1:') ||
                     origin.endsWith('.workers.dev') ||
