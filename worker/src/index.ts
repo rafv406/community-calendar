@@ -117,7 +117,10 @@ async function verifyTurnstile(token: string, secretKey: string, ip?: string): P
       body: formData
     });
     if (!res.ok) return false;
-    const outcome = (await res.json()) as { success: boolean };
+    const outcome = (await res.json()) as { success: boolean; 'error-codes'?: string[] };
+    if (!outcome.success) {
+      console.error('Turnstile verification failed. Error codes:', outcome['error-codes']);
+    }
     return outcome.success;
   } catch (err) {
     console.error('Turnstile verification request failed:', err);
