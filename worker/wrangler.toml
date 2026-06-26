@@ -14,3 +14,7 @@ ALERT_EMAIL_TO = "coordinator@rafv.org"
 
 [ai]
 binding = "AI"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "0293582f13e64416a3aa9157f716a711"

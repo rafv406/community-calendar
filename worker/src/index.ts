@@ -226,6 +226,25 @@ export default {
 
       if (url.pathname === '/chat' && request.method === 'POST') {
         try {
+          // Rate Limiting using Cloudflare KV (if configured)
+          if (env.RATE_LIMIT_KV) {
+            const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
+            const kvKey = `rate-limit:${clientIp}`;
+            const currentCountStr = await env.RATE_LIMIT_KV.get(kvKey);
+            const currentCount = currentCountStr ? parseInt(currentCountStr, 10) : 0;
+
+            const LIMIT = 10; // 10 requests per minute
+            if (currentCount >= LIMIT) {
+              return new Response(JSON.stringify({ error: 'Too many requests. Please try again in a minute.' }), {
+                status: 429,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            }
+
+            // Increment count and set TTL to 60 seconds
+            await env.RATE_LIMIT_KV.put(kvKey, (currentCount + 1).toString(), { expirationTtl: 60 });
+          }
+
           const { messages, turnstileToken } = (await request.json()) as { messages: any[]; turnstileToken?: string };
           if (!messages || !Array.isArray(messages) || messages.length === 0) {
             return new Response(JSON.stringify({ error: 'Missing or empty messages array' }), {

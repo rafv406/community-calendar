@@ -6,6 +6,7 @@ export interface Env {
   OPENAI_API_KEY: string;
   TURNSTILE_SECRET_KEY?: string;
   AI: any;
+  RATE_LIMIT_KV?: KVNamespace;
 }
 
 export async function upsertEvents(events: NormalizedEvent[], env: Env) {

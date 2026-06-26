@@ -749,7 +749,6 @@ export function CalendarChatbot() {
             {turnstileSitekey && (
               <div 
                 ref={turnstileContainerRef} 
-                style={{ display: 'none' }} 
               />
             )}
             <form onSubmit={handleSubmit} style={{ margin: 0 }}>
