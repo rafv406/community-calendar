@@ -102,7 +102,10 @@ function getCorsHeaders(request: Request) {
 }
 
 async function verifyTurnstile(token: string, secretKey: string, ip?: string): Promise<boolean> {
-  if (!token) return false;
+  if (!token) {
+    console.error('Turnstile verification failed: Token is empty or missing.');
+    return false;
+  }
   
   const formData = new FormData();
   formData.append('secret', secretKey);
