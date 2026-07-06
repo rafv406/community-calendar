@@ -163,6 +163,7 @@ export default {
     }
 
     const url = new URL(request.url);
+    const pathname = url.pathname.replace(/\/+/g, '/');
     const sourceId = url.searchParams.get('source_id');
 
     ctx.waitUntil((async () => {
@@ -170,7 +171,7 @@ export default {
     })());
 
     try {
-      if (url.pathname === '/feed.ics') {
+      if (pathname === '/feed.ics') {
         const cache = caches.default;
         const cacheKey = new Request(request.url, {
           method: 'GET',
@@ -224,7 +225,7 @@ export default {
         return response;
       }
 
-      if (url.pathname === '/chat' && request.method === 'POST') {
+      if (pathname === '/chat' && request.method === 'POST') {
         try {
           // Rate Limiting using Cloudflare KV (if configured)
           if (env.RATE_LIMIT_KV) {
@@ -519,7 +520,7 @@ ${contextText}`;
         });
       }
 
-      if (url.pathname === '/events') {
+      if (pathname === '/events') {
         const cache = caches.default;
         const cacheKey = new Request(request.url, {
           method: 'GET',
