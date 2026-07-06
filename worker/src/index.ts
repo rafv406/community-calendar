@@ -419,7 +419,19 @@ Url: ${ev.url || 'Not available'}
 
           // 4. Construct System Prompt & Call streaming OpenAI LLM
           const systemPrompt = `You are the RAFV Calendar Assistant. Use the following retrieved events context to answer the user's question. If the events context is empty, state that you couldn't find matching events.
-Format your answer clearly, using bullet points for multiple events. Always include dates, times, host organizations, and URLs (if available) for the events. Make sure URLs are output as clickable Markdown links, e.g. [Event Details](url).
+
+When recommending or listing events from the retrieved events context, you must format each event inside [EVENT] ... [/EVENT] tags using this exact key-value format (do not use bullet points or markdown styling for the event details themselves):
+
+[EVENT]
+Title: [Event Title]
+Org: [Host Organization Name]
+Date: [Date and Time details]
+Location: [Physical Location or Zoom/Hybrid details]
+Url: [Link URL or "Not Specified"]
+Description: [Brief, friendly description of the event]
+[/EVENT]
+
+Any general conversational text (like introductions or wrap-ups) should be written normally outside of these blocks. Make sure to present urls simply as raw strings inside the Url key.
 
 Context (Retrieved Events):
 ${contextText}`;
