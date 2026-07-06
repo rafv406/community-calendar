@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Calendar as CalendarIcon, MapPin, ExternalLink, Clock, Building, ChevronDown } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -7,19 +7,155 @@ interface Message {
   content: string;
 }
 
-// Inline Markdown Parser to support lists, bold, and links cleanly
+interface ParsedEvent {
+  title: string;
+  org: string;
+  date: string;
+  location: string;
+  url: string;
+  description: string;
+}
+
+function EventCard({ event }: { event: ParsedEvent }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="rafv-event-accordion-card">
+      {/* Accordion Header */}
+      <div 
+        className={`rafv-event-header ${isOpen ? 'open' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '85%' }}>
+          <span className="rafv-event-title">{event.title}</span>
+          <div className="rafv-event-meta">
+            <div className="rafv-event-date-row">
+              <CalendarIcon size={12} style={{ color: 'var(--rafv-royal)' }} />
+              <span>{event.date}</span>
+            </div>
+            {event.org && (
+              <span className="rafv-event-org-badge">
+                {event.org}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className={`rafv-event-chevron ${isOpen ? 'open' : ''}`}>
+          <ChevronDown size={18} />
+        </div>
+      </div>
+
+      {/* Accordion Content Body */}
+      {isOpen && (
+        <div className="rafv-event-body">
+          {event.location && event.location !== 'Not Specified' && (
+            <div className="rafv-event-field">
+              <MapPin size={15} />
+              <span><strong>Location:</strong> {event.location}</span>
+            </div>
+          )}
+          {event.description && (
+            <p className="rafv-event-desc">{event.description}</p>
+          )}
+          {event.url && event.url !== 'Not Specified' && (
+            <a 
+              href={event.url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="rafv-event-btn"
+            >
+              <span>Event Details</span>
+              <ExternalLink size={12} />
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Inline Parser to support custom [EVENT] blocks and standard markdown/links
 function formatMessageContent(content: string, isUser: boolean) {
-  const parseInline = (text: string) => {
+  if (isUser) {
+    return <>{content}</>;
+  }
+
+  const eventRegex = /\[EVENT\]([\s\S]*?)\[\/EVENT\]/g;
+  const elements: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  let keyIndex = 0;
+
+  while ((match = eventRegex.exec(content)) !== null) {
+    const matchIndex = match.index;
+    
+    // Parse text before the event block
+    if (matchIndex > lastIndex) {
+      const textBefore = content.substring(lastIndex, matchIndex);
+      elements.push(<span key={`text-${keyIndex++}`}>{formatTextWithMarkdown(textBefore)}</span>);
+    }
+
+    // Parse the event block fields
+    const blockContent = match[1];
+    const lines = blockContent.split('\n');
+    const eventObj: ParsedEvent = {
+      title: '',
+      org: '',
+      date: '',
+      location: '',
+      url: '',
+      description: ''
+    };
+
+    lines.forEach(line => {
+      const colonIndex = line.indexOf(':');
+      if (colonIndex > 0) {
+        const key = line.substring(0, colonIndex).trim().toLowerCase();
+        const value = line.substring(colonIndex + 1).trim();
+        if (key === 'title') eventObj.title = value;
+        else if (key === 'org') eventObj.org = value;
+        else if (key === 'date') eventObj.date = value;
+        else if (key === 'location') eventObj.location = value;
+        else if (key === 'url') eventObj.url = value;
+        else if (key === 'description') eventObj.description = value;
+      }
+    });
+
+    // Make sure we have at least a title before rendering as a card
+    if (eventObj.title) {
+      elements.push(<EventCard key={`event-${keyIndex++}`} event={eventObj} />);
+    }
+    
+    lastIndex = eventRegex.lastIndex;
+  }
+
+  // Parse remaining text after last event block
+  if (lastIndex < content.length) {
+    const textAfter = content.substring(lastIndex);
+    elements.push(<span key={`text-${keyIndex++}`}>{formatTextWithMarkdown(textAfter)}</span>);
+  }
+
+  return <>{elements}</>;
+}
+
+// Helper to support basic Markdown (bold, lists, links) inside normal text segments
+function formatTextWithMarkdown(text: string) {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let currentList: React.ReactNode[] = [];
+  let listKey = 0;
+
+  const parseInline = (lineText: string) => {
     const regex = /(\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)]+)\))/g;
     const parts = [];
     let lastIdx = 0;
     let match;
     let keyIndex = 0;
 
-    while ((match = regex.exec(text)) !== null) {
+    while ((match = regex.exec(lineText)) !== null) {
       const matchStart = match.index;
       if (matchStart > lastIdx) {
-        parts.push(text.substring(lastIdx, matchStart));
+        parts.push(lineText.substring(lastIdx, matchStart));
       }
 
       if (match[0].startsWith('**')) {
@@ -31,7 +167,7 @@ function formatMessageContent(content: string, isUser: boolean) {
             href={match[4]}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: isUser ? '#fff' : 'var(--rafv-royal)', textDecoration: isUser ? 'underline' : 'none' }}
+            style={{ color: 'var(--rafv-royal)', textDecoration: 'none' }}
           >
             {match[3]}
           </a>
@@ -40,17 +176,12 @@ function formatMessageContent(content: string, isUser: boolean) {
       lastIdx = regex.lastIndex;
     }
 
-    if (lastIdx < text.length) {
-      parts.push(text.substring(lastIdx));
+    if (lastIdx < lineText.length) {
+      parts.push(lineText.substring(lastIdx));
     }
 
-    return parts.length > 0 ? parts : text;
+    return parts.length > 0 ? parts : lineText;
   };
-
-  const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
-  let currentList: React.ReactNode[] = [];
-  let listKey = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -683,6 +814,133 @@ export function CalendarChatbot() {
         .dot { width: 6px; height: 6px; background: #999; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out; }
         .dot:nth-child(1) { animation-delay: -0.32s; } .dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        /* --- EVENT ACCORDION CARD --- */
+        .rafv-event-accordion-card {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(0, 51, 153, 0.15);
+            border-radius: 16px;
+            margin: 12px 0;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+            transition: all 0.3s var(--spring-smooth);
+        }
+        .rafv-event-accordion-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 51, 153, 0.08);
+            border-color: rgba(44, 110, 250, 0.3);
+        }
+        .rafv-event-header {
+            padding: 14px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.25s ease;
+            user-select: none;
+            gap: 12px;
+        }
+        .rafv-event-header:hover {
+            background: rgba(0, 51, 153, 0.03);
+        }
+        .rafv-event-header.open {
+            background: rgba(0, 51, 153, 0.05);
+        }
+        .rafv-event-title {
+            font-weight: 700;
+            color: var(--rafv-navy);
+            font-size: 14px;
+            line-height: 1.35;
+        }
+        .rafv-event-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-top: 4px;
+            font-size: 11.5px;
+        }
+        .rafv-event-date-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #666;
+            font-weight: 500;
+        }
+        .rafv-event-org-badge {
+            background: rgba(0, 51, 153, 0.08);
+            color: var(--rafv-navy);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 9.5px;
+            letter-spacing: 0.02em;
+        }
+        .rafv-event-chevron {
+            color: var(--rafv-navy);
+            transition: transform 0.4s var(--spring-bounce);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .rafv-event-chevron.open {
+            transform: rotate(180deg);
+        }
+        .rafv-event-body {
+            padding: 16px;
+            border-top: 1px solid rgba(0, 51, 153, 0.08);
+            font-size: 13px;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #fff;
+            animation: bodySlideDown 0.3s var(--spring-smooth) both;
+        }
+        @keyframes bodySlideDown {
+            0% { opacity: 0; transform: translateY(-4px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .rafv-event-field {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            line-height: 1.45;
+        }
+        .rafv-event-field svg {
+            flex-shrink: 0;
+            margin-top: 2px;
+            color: var(--rafv-royal);
+        }
+        .rafv-event-desc {
+            margin: 0;
+            line-height: 1.5;
+            color: #444;
+        }
+        .rafv-event-btn {
+            align-self: flex-start;
+            background: var(--rafv-gradient);
+            color: #fff !important;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 12px;
+            text-decoration: none !important;
+            margin-top: 4px;
+            box-shadow: 0 4px 10px rgba(44, 110, 250, 0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.2s var(--spring-bounce), box-shadow 0.2s ease;
+        }
+        .rafv-event-btn:hover {
+            transform: scale(1.04);
+            box-shadow: 0 6px 15px rgba(44, 110, 250, 0.3);
+        }
+        .rafv-event-btn:active {
+            transform: scale(0.96);
+        }
       `}</style>
 
       <div id="rafv-widget" className={isOpen ? 'mobile-open' : ''}>
@@ -729,10 +987,10 @@ export function CalendarChatbot() {
                  <div key={msg.id} className={`message ${isUser ? 'user' : 'bot'}`}>
                    {formatMessageContent(msg.content, isUser)}
                  </div>
-              );
-            })}
+               );
+             })}
             
-            {isLoading && (messages[messages.length - 1]?.content ?? '').trim() === '' && (
+            {isLoading && (messages[messages.length - 1]?.content ?? '').trim().length < 5 && (
               <div className="message bot" id="typing">
                 <div className="typing">
                   <div className="dot"></div>
