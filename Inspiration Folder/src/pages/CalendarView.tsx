@@ -749,7 +749,7 @@ export const CalendarView = () => {
 
   const sourcesMap = useMemo(() => {
     const map = new Map<string, SourceRecord>();
-    sources.forEach(s => map.set(s.id, s));
+    (sources || []).forEach(s => map.set(s.id, s));
     return map;
   }, [sources]);
 
