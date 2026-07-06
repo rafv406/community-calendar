@@ -3,6 +3,8 @@
 ## Overview
 The RAFV Assistant chatbot currently outputs event search results in a dense, text-heavy markdown block format. This design details a mechanism to parse event listings into beautifully-styled, collapsible React accordion cards inside the chat window, greatly improving visual readability and interaction.
 
+It also ensures a polished "typing" state is presented to the user while waiting for the response from the server and during response initialization.
+
 ## Architecture & Data Flow
 
 ### 1. Custom Structured Event Block Syntax
@@ -38,3 +40,8 @@ Each event is rendered in a custom styled accordion component:
 - **Aesthetics & Animations**:
   - Apple-style spring animations on expand/collapse and hover.
   - Consistent layout with the chatbot's overall glassmorphism design system.
+
+### 4. Response Loading & Typing State
+We will ensure that the typing indicator (3 bouncing dots) is visible:
+- Immediately when the user submits a query (during the network round-trip).
+- Cleanly transitions into the streaming response once the first tokens arrive, ensuring a seamless and responsive feel.
