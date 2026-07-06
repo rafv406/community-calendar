@@ -831,7 +831,7 @@ export const CalendarView = () => {
   }, [searchQuery, activeCategories]);
 
   const carouselEvents = useMemo(() => {
-    return events.slice(0, 6).map(ev => {
+    return (events || []).slice(0, 6).map(ev => {
       const source = sourcesMap.get(ev.source_id);
       const orgColor = source?.color || '#003399';
       const dateObj = new Date(ev.start_datetime);
@@ -852,7 +852,7 @@ export const CalendarView = () => {
   }, [events, sourcesMap]);
 
   const browseEvents = useMemo(() => {
-    let filtered = events;
+    let filtered = events || [];
     
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
