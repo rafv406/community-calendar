@@ -255,7 +255,7 @@ const BrowseEvents = ({
   searchingSemantic: boolean
 }) => {
   const orgs = useMemo(() => {
-    return sources.map(source => {
+    return (sources || []).map(source => {
       return { org: source.name, orgColor: source.color || '#003399' };
     });
   }, [sources]);
