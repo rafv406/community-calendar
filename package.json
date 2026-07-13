@@ -2,7 +2,8 @@
   "name": "community-calendar-root",
   "version": "1.0.0",
   "scripts": {
-    "seed-sources": "ts-node scripts/seed-sources.ts"
+    "seed-sources": "ts-node scripts/seed-sources.ts",
+    "loop": "node loop/run.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
@@ -13,5 +14,8 @@
     "node-ical": "^0.25.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
   }
 }

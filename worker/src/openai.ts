@@ -1,70 +1,80 @@
+const NVIDIA_BASE = 'https://integrate.api.nvidia.com/v1';
+
 export async function getOpenAiEmbedding(text: string, apiKey: string): Promise<number[]> {
-  const res = await fetch('https://api.openai.com/v1/embeddings', {
+  const res = await fetch(`${NVIDIA_BASE}/embeddings`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'text-embedding-3-small',
+      model: 'nvidia/llama-nemotron-embed-1b-v2',
       input: text,
-      dimensions: 384
+      input_type: 'query'
     })
   });
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`OpenAI Embedding failed: ${errText}`);
+    throw new Error(`NVIDIA Embedding failed: ${errText}`);
   }
 
   const payload = (await res.json()) as any;
-  return payload.data[0].embedding;
+  const embedding = payload.data[0].embedding;
+  return embedding.slice(0, 384);
 }
 
 export async function getOpenAiEmbeddingBatch(texts: string[], apiKey: string): Promise<number[][]> {
   if (texts.length === 0) return [];
-  const res = await fetch('https://api.openai.com/v1/embeddings', {
+  const res = await fetch(`${NVIDIA_BASE}/embeddings`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'text-embedding-3-small',
+      model: 'nvidia/llama-nemotron-embed-1b-v2',
       input: texts,
-      dimensions: 384
+      input_type: 'passage'
     })
   });
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`OpenAI Batch Embedding failed: ${errText}`);
+    throw new Error(`NVIDIA Batch Embedding failed: ${errText}`);
   }
 
   const payload = (await res.json()) as any;
-  return payload.data.map((item: any) => item.embedding);
+  return payload.data.map((item: any) => item.embedding.slice(0, 384));
 }
 
 export async function callOpenAiChat(
   messages: Array<{ role: string; content: string }>,
   apiKey: string
 ): Promise<string> {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  // Convert system messages to user messages for NVIDIA models
+  const converted = messages.map((m, i) => ({
+    role: i === 0 && m.role === 'system' ? 'user' : m.role,
+    content: m.content
+  }));
+
+  const res = await fetch(`${NVIDIA_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages,
-      temperature: 0.1
+      model: 'meta/llama-3.1-8b-instruct',
+      messages: converted,
+      temperature: 0.1,
+      max_tokens: 1024
     })
   });
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`OpenAI Chat failed: ${errText}`);
+    throw new Error(`NVIDIA Chat failed: ${errText}`);
   }
 
   const payload = (await res.json()) as any;
@@ -75,16 +85,23 @@ export async function streamOpenAiChat(
   messages: Array<{ role: string; content: string }>,
   apiKey: string
 ): Promise<ReadableStream> {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  // Convert system messages to user messages for NVIDIA models
+  const converted = messages.map((m, i) => ({
+    role: i === 0 && m.role === 'system' ? 'user' : m.role,
+    content: m.content
+  }));
+
+  const res = await fetch(`${NVIDIA_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages,
+      model: 'meta/llama-3.1-8b-instruct',
+      messages: converted,
       temperature: 0.2,
+      max_tokens: 1024,
       stream: true
     })
   });

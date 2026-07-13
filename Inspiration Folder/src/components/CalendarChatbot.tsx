@@ -16,7 +16,7 @@ interface ParsedEvent {
   description: string;
 }
 
-function EventCard({ event }: { event: ParsedEvent }) {
+function EventCard({ event }: { event: ParsedEvent; key?: string }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -244,64 +244,37 @@ export function CalendarChatbot() {
   const [isLoading, setIsLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const [rippling, setRippling] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const workerApiUrl = import.meta.env.VITE_WORKER_API_URL || 'https://community-calendar-worker.rafvvids.workers.dev';
-
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const turnstileSitekey = import.meta.env.VITE_TURNSTILE_SITEKEY || '';
   const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
-  const widgetIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!turnstileSitekey || !isOpen) return;
-
-    if (!document.querySelector('script[src*="turnstile/v0/api.js"]')) {
-      const script = document.createElement('script');
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback';
-      script.async = true;
-      script.defer = true;
-      document.body.appendChild(script);
-
-      (window as any).onloadTurnstileCallback = () => {
-        renderTurnstile();
-      };
-    } else if ((window as any).turnstile) {
-      renderTurnstile();
-    }
-
-    function renderTurnstile() {
-      if (turnstileContainerRef.current && (window as any).turnstile) {
-        if (widgetIdRef.current) {
-          try {
-            (window as any).turnstile.remove(widgetIdRef.current);
-          } catch (e) {}
-        }
-        widgetIdRef.current = (window as any).turnstile.render(turnstileContainerRef.current, {
-          sitekey: turnstileSitekey,
-          callback: (token: string) => {
-            setTurnstileToken(token);
-          },
-          'expired-callback': () => {
-            setTurnstileToken(null);
-          },
-          'error-callback': () => {
-            setTurnstileToken(null);
-          },
-          theme: 'light',
-          size: 'invisible'
-        });
-      }
-    }
-
-    return () => {
-      delete (window as any).onloadTurnstileCallback;
-    };
-  }, [isOpen, turnstileSitekey]);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
+  const workerApiUrl = import.meta.env.VITE_WORKER_API_URL || 'https://community-calendar-worker.rafvvids.workers.dev';
+  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITEKEY || '1x00000000000000000000AA';
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (isOpen && !turnstileWidgetIdRef.current && (window as any).turnstile && turnstileContainerRef.current) {
+      try {
+        const widgetId = (window as any).turnstile.render(turnstileContainerRef.current, {
+          sitekey: turnstileSiteKey,
+          size: 'invisible',
+          callback: (token: string) => {
+            setTurnstileToken(token);
+          },
+          'error-callback': (err: any) => {
+            console.error('Turnstile error:', err);
+          }
+        });
+        turnstileWidgetIdRef.current = widgetId;
+      } catch (err) {
+        console.error('Failed to render Turnstile:', err);
+      }
+    }
+  }, [isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
@@ -369,6 +342,16 @@ export function CalendarChatbot() {
         }),
       });
 
+      // Reset Turnstile for the next request
+      if (turnstileWidgetIdRef.current && (window as any).turnstile) {
+        try {
+          (window as any).turnstile.reset(turnstileWidgetIdRef.current);
+          setTurnstileToken(null);
+        } catch (resetErr) {
+          console.error('Error resetting Turnstile:', resetErr);
+        }
+      }
+
       if (!res.ok) {
         throw new Error('Failed to generate response');
       }
@@ -402,12 +385,6 @@ export function CalendarChatbot() {
       );
     } finally {
       setIsLoading(false);
-      if (turnstileSitekey && widgetIdRef.current && (window as any).turnstile) {
-        try {
-          (window as any).turnstile.reset(widgetIdRef.current);
-          setTurnstileToken(null);
-        } catch (e) {}
-      }
     }
   };
 
@@ -810,10 +787,34 @@ export function CalendarChatbot() {
             .rafv-header { padding-top: calc(15px + env(safe-area-inset-top)); }
         }
 
-        .typing { display: flex; gap: 4px; padding: 10px; }
-        .dot { width: 6px; height: 6px; background: #999; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out; }
-        .dot:nth-child(1) { animation-delay: -0.32s; } .dot:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        .typing-indicator {
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 18px;
+            background: rgba(44, 110, 250, 0.06);
+            border: 1px solid rgba(44, 110, 250, 0.15);
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 4px 12px rgba(44, 110, 250, 0.03);
+            margin: 4px 0;
+            animation: messageBotIn 0.3s var(--spring-bounce) both;
+        }
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--rafv-royal);
+            border-radius: 50%;
+            display: inline-block;
+            animation: typingBounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1.1); opacity: 1; }
+        }
 
         /* --- EVENT ACCORDION CARD --- */
         .rafv-event-accordion-card {
@@ -991,12 +992,10 @@ export function CalendarChatbot() {
              })}
             
             {isLoading && (messages[messages.length - 1]?.content ?? '').trim().length < 5 && (
-              <div className="message bot" id="typing">
-                <div className="typing">
-                  <div className="dot"></div>
-                  <div className="dot"></div>
-                  <div className="dot"></div>
-                </div>
+              <div className="typing-indicator" id="typing">
+                <div className="typing-dot"></div>
+                <div className="typing-dot"></div>
+                <div className="typing-dot"></div>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -1004,11 +1003,7 @@ export function CalendarChatbot() {
           
           {/* Input Area */}
           <div className="rafv-input-container">
-            {turnstileSitekey && (
-              <div 
-                ref={turnstileContainerRef} 
-              />
-            )}
+            <div ref={turnstileContainerRef} style={{ display: 'none' }} />
             <form onSubmit={handleSubmit} style={{ margin: 0 }}>
               <div className={`rafv-input-wrapper ${focused ? 'focused' : ''}`}>
                 <input 

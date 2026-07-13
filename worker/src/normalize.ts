@@ -212,22 +212,28 @@ export async function aiEnrichEventsBatch(
 ): Promise<NormalizedEvent[]> {
   if (events.length === 0 || !openaiApiKey) return events;
 
-  // 1. Batch generate embeddings for all events
-  let embeddings: number[][] = [];
-  try {
-    const texts = events.map(
-      ev => `Title: ${ev.title}\nDescription: ${ev.description || ''}\nLocation: ${ev.location || 'Unknown'}`
-    );
-    embeddings = await getOpenAiEmbeddingBatch(texts, openaiApiKey);
-  } catch (err) {
-    console.error('Failed to batch generate embeddings:', err);
-  }
+  const CHUNK_SIZE = 20;
+  const enrichedEvents: NormalizedEvent[] = [];
 
-  // 2. Batch categorize events using OpenAI in a single request
-  let categoryMap: Record<string, string[]> = {};
-  try {
-    const eventListString = events.map((ev, i) => `${i}. Title: ${ev.title} | Desc: ${ev.description || ''}`).join('\n');
-    const prompt = `Classify each of the following calendar events into one or more of these categories: fundraiser, meeting, workshop, family, arts, sports, community, environment, professional, social.
+  for (let i = 0; i < events.length; i += CHUNK_SIZE) {
+    const chunk = events.slice(i, i + CHUNK_SIZE);
+
+    // 1. Batch generate embeddings for this chunk
+    let embeddings: number[][] = [];
+    try {
+      const texts = chunk.map(
+        ev => `Title: ${ev.title}\nDescription: ${ev.description || ''}\nLocation: ${ev.location || 'Unknown'}`
+      );
+      embeddings = await getOpenAiEmbeddingBatch(texts, openaiApiKey);
+    } catch (err) {
+      console.error(`Failed to batch generate embeddings for chunk starting at ${i}:`, err);
+    }
+
+    // 2. Batch categorize events for this chunk in a single request
+    let categoryMap: Record<string, string[]> = {};
+    try {
+      const eventListString = chunk.map((ev, idx) => `${idx}. Title: ${ev.title} | Desc: ${ev.description || ''}`).join('\n');
+      const prompt = `Classify each of the following calendar events into one or more of these categories: fundraiser, meeting, workshop, family, arts, sports, community, environment, professional, social.
 Return ONLY a JSON object where the keys are the event indices (0, 1, 2...) and the values are arrays of matching categories from the list above. Do not include markdown or explanation.
 
 Events to classify:
@@ -235,41 +241,46 @@ ${eventListString}
 
 Categories JSON Object:`;
 
-    const rawText = await callOpenAiChat([
-      { role: 'system', content: 'You are a precise classifier that outputs only valid JSON objects.' },
-      { role: 'user', content: prompt }
-    ], openaiApiKey);
+      const rawText = await callOpenAiChat([
+        { role: 'system', content: 'You are a precise classifier that outputs only valid JSON objects.' },
+        { role: 'user', content: prompt }
+      ], openaiApiKey);
 
-    if (rawText) {
-      let cleanedText = rawText.trim();
-      if (cleanedText.startsWith('```')) {
-        cleanedText = cleanedText.replace(/^```(json)?\s*/i, '').replace(/\s*```$/, '');
+      if (rawText) {
+        let cleanedText = rawText.trim();
+        if (cleanedText.startsWith('```')) {
+          cleanedText = cleanedText.replace(/^```(json)?\s*/i, '').replace(/\s*```$/, '');
+        }
+        categoryMap = JSON.parse(cleanedText);
       }
-      categoryMap = JSON.parse(cleanedText);
+    } catch (err) {
+      console.error(`Failed to batch classify categories with LLM for chunk starting at ${i}:`, err);
     }
-  } catch (err) {
-    console.error('Failed to batch classify categories with LLM:', err);
+
+    // 3. Assemble enriched events for this chunk
+    const chunkEnriched = chunk.map((ev, idx) => {
+      let categories = ev.categories;
+      if (categoryMap && categoryMap[String(idx)] && Array.isArray(categoryMap[String(idx)])) {
+        const validCategories = new Set(Object.keys(CATEGORY_KEYWORDS));
+        const parsedCats = categoryMap[String(idx)]
+          .map((c: string) => c.toLowerCase().trim())
+          .filter((c: string) => validCategories.has(c));
+        if (parsedCats.length > 0) {
+          categories = parsedCats;
+        }
+      } else {
+        categories = extractCategories(ev.title + ' ' + (ev.description || ''));
+      }
+
+      return {
+        ...ev,
+        categories: categories.length > 0 ? categories : ev.categories,
+        embedding: embeddings[idx] || null
+      };
+    });
+
+    enrichedEvents.push(...chunkEnriched);
   }
 
-  // 3. Assemble enriched events
-  return events.map((ev, i) => {
-    let categories = ev.categories;
-    if (categoryMap && categoryMap[String(i)] && Array.isArray(categoryMap[String(i)])) {
-      const validCategories = new Set(Object.keys(CATEGORY_KEYWORDS));
-      const parsedCats = categoryMap[String(i)]
-        .map((c: string) => c.toLowerCase().trim())
-        .filter((c: string) => validCategories.has(c));
-      if (parsedCats.length > 0) {
-        categories = parsedCats;
-      }
-    } else {
-      categories = extractCategories(ev.title + ' ' + (ev.description || ''));
-    }
-
-    return {
-      ...ev,
-      categories: categories.length > 0 ? categories : ev.categories,
-      embedding: embeddings[i] || null
-    };
-  });
+  return enrichedEvents;
 }
